@@ -18,7 +18,7 @@ WIFI_INTERFACE="wlan0"
 HOTSPOT_INTERFACE="AUTO"     # 运行时由 gateway.sh 自动替换为真实接口名
 HOTSPOT_SUBNET_IPV4="AUTO"   # 同上
 
-PROXY_IPV6=0                 # 热点无 IPv6 出口，不代理也不禁用（省一堆 ip6tables 规则）
+PROXY_IPV6=0                 # 不代理 v6；热点接口的 IPv6 会被直接禁用，客户端只能走 IPv4
 BLOCK_QUIC=0
 BYPASS_CN_IP=0               # 本机内核无 ipset，关闭
 MAC_FILTER_ENABLE=0

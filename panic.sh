@@ -35,7 +35,12 @@ ip -6 rule del fwmark 20 table 2025 2>/dev/null
 ip route flush table 2025 2>/dev/null
 ip -6 route flush table 2025 2>/dev/null
 
-# 5) 恢复 IPv6（脚本可能把 disable_ipv6 置 1）
+# 5) 恢复热点接口 IPv6
+for ifc in wlan0 wlan1 wlan2 ap0 ap1 swlan0 softap0; do
+  [ -w "/proc/sys/net/ipv6/conf/$ifc/disable_ipv6" ] && echo 0 > "/proc/sys/net/ipv6/conf/$ifc/disable_ipv6" 2>/dev/null
+done
+
+# 5.1) 恢复 IPv6（脚本可能把 disable_ipv6 置 1）
 for f in /proc/sys/net/ipv6/conf/all/disable_ipv6 /proc/sys/net/ipv6/conf/default/disable_ipv6; do
   [ -w "$f" ] && echo 0 > "$f" 2>/dev/null
 done

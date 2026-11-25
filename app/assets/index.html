@@ -189,6 +189,7 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
   <div class="card tight">
     <div class="row"><span class="k">本机网卡</span><span class="v" id="ifCount">—</span></div>
     <div id="ifList"></div>
+    <div class="row"><span class="k">热点 IPv6</span><span class="v" id="hV6">—</span></div>
   </div>
 
   <div class="card tight">
@@ -313,7 +314,7 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
 
   <div class="card">
     <div class="lbl" style="margin-top:0">B 手机连通性</div>
-    <button class="btn" id="bTestClient">检测热点客户端</button>
+    <button class="btn" id="bTestClient">刷新客户端列表</button>
     <div id="testOut" style="margin-top:12px"></div>
   </div>
 
@@ -504,6 +505,7 @@ $$('.tabs button').forEach(b => b.onclick = () => {
   $$('.page').forEach(p => p.classList.remove('on'));
   $('#p-' + b.dataset.p).classList.add('on');
   if (b.dataset.p === 'node') loadProxies();
+  if (b.dataset.p === 'diag') refreshClients();
 });
 
 /* ---------- 无 root 降级 ---------- */
@@ -564,11 +566,25 @@ async function refreshHome() {
     `<div class="row"><span class="k" style="font-family:ui-monospace,monospace;font-size:13px">${x.n}</span>
      <span class="v" style="font-family:ui-monospace,monospace;font-size:13px">${x.ip}</span></div>`).join('');
 
+  // IPv6 状态
+  if (d.ipv6 === 'disabled') {
+    $('#hV6').innerHTML = '<span style="color:var(--green)">已禁用</span> <span style="font-size:11px;color:var(--dim2);font-weight:400">防绕过</span>';
+  } else if (d.ipv6addr) {
+    $('#hV6').innerHTML = '<span style="color:var(--amber)">开启 ' + d.ipv6addr + '</span>';
+  } else {
+    $('#hV6').textContent = d.ipv6 === 'enabled' ? '开启' : '—';
+  }
+
+  // 客户端 + 各自访问站点数
+  const hosts = d.hosts || [];
   const cli = d.assoc || [];
   $('#cliCount').textContent = cli.length + ' 台';
   $('#cliList').innerHTML = cli.length
-    ? cli.map(x => `<div class="row"><span class="k" style="font-family:ui-monospace,monospace;font-size:13px">${x.ip}</span>
-        <span class="v" style="font-size:11.5px;color:var(--dim2);font-weight:400">${x.mac}</span></div>`).join('')
+    ? cli.map(x => {
+        const n = hosts.filter(h => h.ip === x.ip).length;
+        return `<div class="row"><span class="k" style="font-family:ui-monospace,monospace;font-size:13px">${x.ip}</span>
+          <span class="v" style="font-size:11.5px;color:var(--dim2);font-weight:400">${x.mac}${n ? ' · ' + n + ' 站点' : ''}</span></div>`;
+      }).join('')
     : '<div class="row"><span class="k">暂无设备连接</span><span class="v"></span></div>';
   $('#hConn').textContent = d.conns || 0;
 
@@ -842,27 +858,46 @@ $('#segScope').onclick = e => {
 };
 
 /* ---------- 诊断 ---------- */
-$('#bTestClient').onclick = async () => {
-  $('#testOut').innerHTML = '<span class="spin"></span> 检测中…';
-  const neigh = await run(`ip neigh show dev wlan2 2>/dev/null | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+ ' | grep lladdr`);
-  const conns = await run(`curl -s -m 4 ${API}/connections 2>/dev/null`);
-  const hosts = [];
+function renderClients(d) {
+  const hosts = d.hosts || [];
+  const cli = d.assoc || [];
+  if (!cli.length) {
+    $('#testOut').innerHTML = '<div class="hint">暂无设备连接</div>';
+    return;
+  }
+  $('#testOut').innerHTML = cli.map((x, i) => {
+    const hs = hosts.filter(h => h.ip === x.ip).map(h => h.h);
+    const uniq = [...new Set(hs)];
+    const mac = x.mac || '';
+    const rand = /^[0-9a-f]{2}/i.test(mac) && (parseInt(mac.slice(0,2), 16) & 0x02);
+    return `<div class="acc ${i === 0 ? 'open' : ''}">
+      <div class="acc-h" style="padding:12px 14px">
+        <span style="font-family:ui-monospace,monospace;font-size:13px">${x.ip}</span>
+        <span style="font-size:11.5px;color:var(--dim2);font-weight:400">${uniq.length} 站点</span>
+      </div>
+      <div class="acc-b" style="padding:0 14px 14px">
+        <div style="font-size:11.5px;color:var(--dim2);margin-bottom:8px">
+          MAC ${mac || '未知'}${rand ? '（随机地址）' : ''}
+        </div>
+        ${uniq.length
+          ? uniq.map(h => `<div style="font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line);word-break:break-all">${h}</div>`).join('')
+          : '<div style="font-size:12.5px;color:var(--dim2)">暂无访问记录（HTTPS 只能看到域名，看不到路径和内容）</div>'}
+      </div></div>`;
+  }).join('');
+  $$('#testOut .acc-h').forEach(h => h.onclick = () => h.parentElement.classList.toggle('open'));
+}
+
+async function refreshClients() {
+  const raw = await run(`sh ${GW}/status.sh 2>/dev/null`);
   try {
-    const d = JSON.parse(conns);
-    (d.connections||[]).forEach(c => {
-      const ip = c.metadata.sourceIP || '';
-      if (ip.startsWith('10.247.101.') || ip.startsWith('192.168.')) {
-        if (c.metadata.host) hosts.push(c.metadata.host);
-      }
-    });
-  } catch(e) {}
-  const devs = neigh.split('\n').filter(Boolean);
-  let h = `<div class="row"><span class="k">在线客户端</span><span class="v">${devs.length} 台</span></div>`;
-  devs.forEach(d => { const ip = d.split(' ')[0]; h += `<div class="row"><span class="k">${ip}</span><span class="v">${d.match(/..:..:..:..:..:../)||''}</span></div>`; });
-  h += `<div class="row"><span class="k">最近访问域名</span><span class="v">${hosts.length} 个</span></div>`;
-  [...new Set(hosts)].slice(0,6).forEach(x => h += `<div class="row"><span class="k" style="font-size:12px">${esc(x)}</span><span class="v"></span></div>`);
-  $('#testOut').innerHTML = hosts.length ? h : h + '<div class="hint">没看到热点网段的活跃连接，让 B 手机刷新一下网页再测。</div>';
-};
+    const d = JSON.parse(raw.trim().split('\n').pop());
+    renderClients(d);
+  } catch (e) {
+    $('#testOut').innerHTML = '<div class="hint">读取失败</div>';
+  }
+}
+
+$('#bTestClient').onclick = refreshClients;
 
 async function speedTest(proxied) {
   $('#speedOut').innerHTML = '<span class="spin"></span> 测速中（约 10 秒）…';

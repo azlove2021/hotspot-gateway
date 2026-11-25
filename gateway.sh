@@ -102,12 +102,23 @@ start(){
   if [ -n "$HSIF" ]; then
     HSIF=${HSIF%%@*}
     for proto in udp tcp; do
+      # IPv4
       iptables -t mangle -D PREROUTING -i "$HSIF" -p $proto --dport 53 -j RETURN 2>/dev/null
       iptables -t mangle -I PREROUTING 1 -i "$HSIF" -p $proto --dport 53 -j RETURN
       iptables -t nat -D PREROUTING -i "$HSIF" -p $proto --dport 53 -j REDIRECT --to-ports 5354 2>/dev/null
       iptables -t nat -I PREROUTING 1 -i "$HSIF" -p $proto --dport 53 -j REDIRECT --to-ports 5354
+      # IPv6（iPhone 走 v6 时必须一起劫持）
+      ip6tables -t mangle -D PREROUTING -i "$HSIF" -p $proto --dport 53 -j RETURN 2>/dev/null
+      ip6tables -t mangle -I PREROUTING 1 -i "$HSIF" -p $proto --dport 53 -j RETURN 2>/dev/null
+      ip6tables -t nat -D PREROUTING -i "$HSIF" -p $proto --dport 53 -j REDIRECT --to-ports 5354 2>/dev/null
+      ip6tables -t nat -I PREROUTING 1 -i "$HSIF" -p $proto --dport 53 -j REDIRECT --to-ports 5354 2>/dev/null
     done
     log "DNS 劫持：$HSIF 的 53 → 5354"
+
+    # 关键：禁用热点接口 IPv6。内核没有 ip6tables nat 表，v6 DNS 无法劫持，
+    # 而 iPhone/iPad 会优先走 IPv6 从而完全绕过代理（现象：国内能上、国外不通）
+    echo 1 > /proc/sys/net/ipv6/conf/$HSIF/disable_ipv6 2>/dev/null
+    log "已禁用 $HSIF 的 IPv6（强制客户端走 IPv4，否则 v6 绕过代理）"
   fi
 
   # 4) 自检 + 失败自动回滚
