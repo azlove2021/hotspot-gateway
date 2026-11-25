@@ -224,6 +224,71 @@ public class MainActivity extends Activity {
             return r == null ? "" : r;
         }
 
+
+        /** 本机所有 IPv4 地址（不需要 root） */
+        @JavascriptInterface
+        public String localIps() {
+            StringBuilder sb = new StringBuilder("[");
+            boolean first = true;
+            try {
+                java.util.Enumeration<java.net.NetworkInterface> nis =
+                        java.net.NetworkInterface.getNetworkInterfaces();
+                while (nis != null && nis.hasMoreElements()) {
+                    java.net.NetworkInterface ni = nis.nextElement();
+                    if (!ni.isUp() || ni.isLoopback()) continue;
+                    for (java.net.InterfaceAddress ia : ni.getInterfaceAddresses()) {
+                        java.net.InetAddress a = ia.getAddress();
+                        if (a == null || a.getAddress().length != 4) continue;
+                        if (!first) sb.append(",");
+                        first = false;
+                        sb.append("{\"n\":\"").append(ni.getName())
+                          .append("\",\"ip\":\"").append(a.getHostAddress())
+                          .append("\",\"prefix\":").append(ia.getNetworkPrefixLength()).append("}");
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+            return sb.append("]").toString();
+        }
+
+        /** TCP 端口探测（不需要 root），返回 true/false */
+        @JavascriptInterface
+        public boolean probe(String host, int port) {
+            java.net.Socket sock = new java.net.Socket();
+            try {
+                sock.connect(new java.net.InetSocketAddress(host, port), 1200);
+                return true;
+            } catch (Exception e) {
+                return false;
+            } finally {
+                try { sock.close(); } catch (Exception ignored) {}
+            }
+        }
+
+        /** 守护进程是否活着：写探针命令，3 秒内有无回执 */
+        @JavascriptInterface
+        public boolean daemonAlive() {
+            File seqF = new File(getFilesDir(), "seq");
+            File cmdF = new File(getFilesDir(), "cmd");
+            File doneF = new File(getFilesDir(), "done");
+            try {
+                long probe = System.currentTimeMillis();
+                writeFile(cmdF, "echo __probe__");
+                writeFile(seqF, String.valueOf(probe));
+                long t0 = System.currentTimeMillis();
+                while (System.currentTimeMillis() - t0 < 3000) {
+                    String d = readFile(doneF);
+                    if (d != null && d.trim().equals(String.valueOf(probe))) {
+                        String out = readFile(new File(getFilesDir(), "out"));
+                        return out != null && out.contains("__probe__");
+                    }
+                    Thread.sleep(150);
+                }
+            } catch (Exception ignored) {
+            }
+            return false;
+        }
+
         @JavascriptInterface
         public String heartbeatFile() {
             return hbFile.getAbsolutePath();

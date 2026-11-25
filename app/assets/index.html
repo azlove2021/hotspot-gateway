@@ -146,6 +146,18 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
     </div>
   </div>
 
+  <div class="card" id="noRootCard" style="display:none;background:var(--amber-soft);border-color:transparent">
+    <div style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:6px">⚠️ 未检测到 root 环境</div>
+    <div style="font-size:12.5px;color:var(--dim);line-height:1.7">
+      网关模式需要 root 才能改 iptables。现在切到<b>代理共享模式</b>：<br>
+      在 A 手机开任意 Clash 客户端并打开「允许局域网连接」，然后让 B 手机按下表填代理。
+    </div>
+    <div class="row" style="border-top:1px solid var(--line);margin-top:8px">
+      <span class="k">代理主机</span><span class="v" id="nrHost">—</span></div>
+    <div class="row"><span class="k">代理端口</span><span class="v" id="nrPort">7891</span></div>
+    <div class="row"><span class="k">端口状态</span><span class="v" id="nrState">检测中</span></div>
+  </div>
+
   <div class="card tight">
     <div class="row"><span class="k">热点接口</span><span class="v" id="hIf">—</span></div>
     <div class="row"><span class="k">热点网段</span><span class="v" id="hNet">—</span></div>
@@ -183,6 +195,7 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
       <button class="btn" id="bSub">导入订阅</button>
       <button class="btn ghost" id="bSubReload">刷新节点</button>
     </div>
+    <button class="btn ghost" id="bSyncFl" style="margin-top:10px">从 FlClash 同步配置</button>
     <div class="hint" id="subHint">导入后会写入 proxy-providers，重启网关生效。</div>
   </div>
 
@@ -322,6 +335,72 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
   <button data-p="diag">
     <svg viewBox="0 0 24 24"><path d="M3 12h4l3 8l4-16l3 8h4"/></svg>
     诊断</button>
+  <button data-p="help">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a3 3 0 0 1 5.6 1.5c0 2-3 2.5-3 4"/><circle cx="12" cy="17.5" r=".6" fill="currentColor"/></svg>
+    教程</button>
+</div>
+
+
+<!-- ============ 教程 ============ -->
+<div class="page" id="p-help">
+  <h1>使用教程</h1>
+  <div class="sub">三分钟看懂：IP 在哪、代理怎么填、电脑怎么连</div>
+
+  <div class="card">
+    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">① 两台手机的 IP 在哪看</div>
+    <div style="font-size:13.5px;line-height:1.9;color:var(--txt)">
+      <b>A 手机（开热点的这台）</b><br>
+      · 打开本 App → 仪表盘 → 「本机网卡」<br>
+      · 热点那一行的地址就是网关 IP，例如 <code style="background:var(--card2);padding:1px 5px;border-radius:4px">10.247.101.131</code><br><br>
+      <b>B 手机（连热点的那台）</b><br>
+      · 设置 → WLAN → 点当前连接的热点 → 查看「IP 地址」<br>
+      · 一般是 <code style="background:var(--card2);padding:1px 5px;border-radius:4px">10.247.101.x</code>，和 A 手机同一网段<br>
+      · 也可以回到本 App 仪表盘的「B 手机（热点客户端）」里直接看到
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">② B 手机怎么填代理</div>
+    <div style="font-size:13.5px;line-height:1.9">
+      只有<b>无 root 代理共享模式</b>才需要手动填；网关模式是不用填的。<br><br>
+      <b>安卓</b><br>
+      1. 设置 → WLAN → 长按热点名 → 修改网络<br>
+      2. 展开「高级选项」→ 代理 → 选「手动」<br>
+      3. 主机名填 A 手机的网关 IP，端口填 <code style="background:var(--card2);padding:1px 5px;border-radius:4px">7891</code><br>
+      4. 保存，重新连一次<br><br>
+      <b>iPhone</b><br>
+      设置 → 无线局域网 → 点热点右侧 ⓘ → 配置代理 → 手动<br>
+      服务器填网关 IP，端口 7891
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">③ 电脑能不能用</div>
+    <div style="font-size:13.5px;line-height:1.9">
+      能，两种方式：<br><br>
+      <b>方式一：连 A 手机的热点（推荐）</b><br>
+      · 电脑连上热点后，网关模式下<b>什么都不用设</b><br>
+      · 代理共享模式下，设置系统 HTTP 代理指向 A 手机 IP:7891<br><br>
+      <b>Windows</b>：设置 → 网络和 Internet → 代理 → 手动设置代理 → 地址 填 IP，端口 7891<br>
+      <b>macOS</b>：系统设置 → 网络 → 高级 → 代理 → 勾选「网页代理(HTTP)」和「安全网页代理(HTTPS)」，填同样的地址端口<br><br>
+      <b>方式二：电脑连同一个路由器</b><br>
+      A 手机连路由器（不一定是热点），电脑和 A 在同一局域网，代理指向 A 的路由器 IP:7891。
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">④ 常见问题</div>
+    <div style="font-size:13.5px;line-height:1.9">
+      <b>B 手机显示「已连接但无法访问互联网」</b><br>
+      Android 的联网检测失败，不影响实际使用；浏览器能开网页就没事。<br><br>
+      <b>只有部分 App 能上网</b><br>
+      代理共享模式下，不认系统代理的 App（部分游戏、Netflix）走不了，这是代理模式的固有限制。要全局就得上 root 用网关模式。<br><br>
+      <b>关掉 App 后 B 手机断网</b><br>
+      网关模式有 90 秒心跳保护，会主动恢复默认网络，不会把你锁死。<br><br>
+      <b>想换节点</b><br>
+      节点页 → 点任意节点即可切换；订阅更新用「导入订阅」。
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -367,6 +446,40 @@ $$('.tabs button').forEach(b => b.onclick = () => {
   $('#p-' + b.dataset.p).classList.add('on');
   if (b.dataset.p === 'node') loadProxies();
 });
+
+/* ---------- 无 root 降级 ---------- */
+async function enterNoRootMode() {
+  $('#noRootCard').style.display = '';
+  $('#bStart').disabled = true;
+  $('#bStop').disabled = true;
+  $('#bRestart').disabled = true;
+  $('#bStart').textContent = '需要 root';
+  let ips = [];
+  try { ips = JSON.parse(Native.localIps() || '[]'); } catch (e) {}
+  const cand = ips.filter(x => /^(wlan|ap|swlan|softap)/.test(x.n)).pop() || ips[0];
+  const host = cand ? cand.ip : '';
+  $('#nrHost').textContent = host || '—';
+  if (host) {
+    let found = 0;
+    for (const port of [7891, 7890, 7892]) {
+      if (Native.probe(host, port)) { found = port; break; }
+    }
+    if (found) {
+      $('#nrPort').textContent = found;
+      $('#nrState').innerHTML = '<span style="color:var(--green);font-weight:600">已监听</span>';
+    } else {
+      $('#nrState').innerHTML = '<span style="color:var(--red)">未监听，先在 Clash 里开启「允许局域网连接」</span>';
+    }
+  }
+  $('#hIf').textContent = cand ? cand.n : '—';
+  $('#hNet').textContent = cand ? cand.ip : '—';
+  if (ips.length) {
+    $('#ifCount').textContent = ips.length + ' 个';
+    $('#ifList').innerHTML = ips.map(x =>
+      `<div class="row"><span class="k" style="font-family:ui-monospace,monospace;font-size:13px">${x.n}</span>
+       <span class="v" style="font-family:ui-monospace,monospace;font-size:13px">${x.ip}/${x.prefix}</span></div>`).join('');
+  }
+}
 
 /* ---------- 仪表盘 ---------- */
 let lastTraffic = {t: 0, up: 0, down: 0};
@@ -540,6 +653,13 @@ $('#bSub').onclick = async () => {
   $('#subHint').textContent = res.slice(0, 300);
 };
 $('#bSubReload').onclick = loadProxies;
+$('#bSyncFl').onclick = async () => {
+  toast('正在从 FlClash 同步…');
+  const r = await run(`sh ${GW}/sync_flclash.sh 2>&1`);
+  $('#subHint').textContent = (r || '').slice(0, 300);
+  toast(/OK/.test(r) ? '同步完成' : '同步失败');
+  loadProxies();
+};
 $('#bReloadCfg').onclick = async () => { await run(`curl -s -X PUT -m 5 '${API}/configs?force=true' -d '{"path":"${GW}/config.yaml"}' 2>/dev/null`); toast('配置已重载'); loadProxies(); };
 
 /* ---------- 设置 ---------- */
@@ -655,7 +775,10 @@ function applyTheme(t) {
 /* ---------- 启动 ---------- */
 window.onload = () => {
   try { applyTheme(store.get('gw_theme', 'light')); } catch (e) {}
-  refreshHome();
+  let rootOk = true;
+  try { rootOk = Native.daemonAlive(); } catch (e) { rootOk = false; }
+  if (!rootOk) { enterNoRootMode(); }
+  else refreshHome();
   readSettings();
   setInterval(() => { if ($('#p-home').classList.contains('on')) refreshHome(); }, 4000);
 };
