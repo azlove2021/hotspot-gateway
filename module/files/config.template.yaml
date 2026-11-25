@@ -1,0 +1,87 @@
+port: 0
+socks-port: 0
+redir-port: 0
+tproxy-port: 7895
+mixed-port: 7891
+allow-lan: true
+bind-address: "*"
+mode: rule
+log-level: error
+ipv6: false
+external-controller: "127.0.0.1:9095"
+external-controller-cors:
+  allow-origins:
+    - "*"
+  allow-private-network: true
+
+# 首次安装为空，在 App 里「导入订阅」或「从 FlClash 同步」后会自动填充
+proxies: []
+
+proxy-groups:
+  - {name: 节点选择, type: select, proxies: [DIRECT]}
+  - {name: 自动选择, type: url-test, proxies: [DIRECT], url: 'https://www.gstatic.com/generate_204', interval: 300, tolerance: 50}
+  - {name: ChatGPT, type: select, proxies: [节点选择]}
+  - {name: Gemini, type: select, proxies: [节点选择]}
+  - {name: Netflix, type: select, proxies: [节点选择]}
+  - {name: Telegram, type: select, proxies: [节点选择]}
+  - {name: Twitter, type: select, proxies: [节点选择]}
+  - {name: TikTok, type: select, proxies: [节点选择]}
+  - {name: WhatsApp, type: select, proxies: [节点选择]}
+  - {name: Copilot, type: select, proxies: [节点选择]}
+  - {name: 谷歌服务, type: select, proxies: [节点选择]}
+  - {name: 哔哩哔哩, type: select, proxies: [DIRECT, 节点选择]}
+  - {name: 抖音, type: select, proxies: [DIRECT, 节点选择]}
+  - {name: 苹果服务, type: select, proxies: [DIRECT, 节点选择]}
+  - {name: 微软服务, type: select, proxies: [DIRECT, 节点选择]}
+  - {name: Steam, type: select, proxies: [DIRECT, 节点选择]}
+  - {name: 磁力下载, type: select, proxies: [DIRECT]}
+
+rules:
+  - GEOIP,LAN,DIRECT,no-resolve
+  - GEOSITE,private,DIRECT
+  - GEOSITE,cn,DIRECT
+  - GEOIP,CN,DIRECT
+  - GEOSITE,bilibili,DIRECT
+  - GEOSITE,bytedance,DIRECT
+  - GEOSITE,apple-cn,DIRECT
+  - GEOSITE,microsoft@cn,DIRECT
+  - DOMAIN-SUFFIX,openai.com,ChatGPT
+  - DOMAIN-SUFFIX,chatgpt.com,ChatGPT
+  - DOMAIN-SUFFIX,anthropic.com,Copilot
+  - DOMAIN-SUFFIX,claude.ai,Copilot
+  - GEOSITE,openai,ChatGPT
+  - GEOSITE,anthropic,Copilot
+  - GEOSITE,gemini,Gemini
+  - GEOSITE,youtube,节点选择
+  - GEOSITE,netflix,Netflix
+  - GEOSITE,telegram,Telegram
+  - GEOSITE,twitter,Twitter
+  - GEOSITE,tiktok,TikTok
+  - GEOSITE,whatsapp,WhatsApp
+  - GEOSITE,google,谷歌服务
+  - GEOSITE,microsoft,微软服务
+  - GEOSITE,apple,苹果服务
+  - GEOSITE,steam@cn,DIRECT
+  - MATCH,节点选择
+
+dns:
+  enable: true
+  ipv6: false
+  use-hosts: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 28.0.0.1/8
+  fake-ip-filter:
+    - "*.lan"
+    - "*.local"
+    - "*.localdomain"
+    - "+.msftconnecttest.com"
+    - "+.msftncsi.com"
+    - localhost.ptlogin2.qq.com
+  listen: "0.0.0.0:5354"
+  nameserver:
+    - 223.5.5.5
+    - 119.119.29.29
+    - 119.29.29.29
+  fallback:
+    - 223.5.5.5
+    - 119.29.29.29

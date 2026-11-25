@@ -1,0 +1,28 @@
+# ==== 网关透明代理配置 (mihomo TPROXY) ====
+PROXY_MODE=1                 # 1=强制 TPROXY（TCP+UDP）
+PROXY_TCP_PORT=7895
+PROXY_UDP_PORT=7895
+PROXY_TCP=1
+PROXY_UDP=1
+
+DNS_HIJACK_ENABLE=1          # 劫持 53 到本地 DNS
+DNS_PORT=5354
+
+PROXY_MOBILE=0               # 默认不代理本机移动数据
+PROXY_WIFI=0                 # 默认不代理本机 WiFi
+PROXY_HOTSPOT=1              # 热点客户端走代理 ← 关键
+PROXY_USB=0
+
+MOBILE_INTERFACE="rmnet_data+"
+WIFI_INTERFACE="wlan0"
+HOTSPOT_INTERFACE="AUTO"     # 运行时由 gateway.sh 自动替换为真实接口名
+HOTSPOT_SUBNET_IPV4="AUTO"   # 同上
+
+PROXY_IPV6=0                 # 热点无 IPv6 出口，不代理也不禁用（省一堆 ip6tables 规则）
+BLOCK_QUIC=0
+BYPASS_CN_IP=0               # 本机内核无 ipset，关闭
+MAC_FILTER_ENABLE=0
+PERFORMANCE_MODE=1
+
+# 只保留必要的内网/保留网段，减少 iptables 规则数量（启动更快）
+BYPASS_IPv4_LIST="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 224.0.0.0/4 255.255.255.255/32"

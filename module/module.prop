@@ -1,0 +1,6 @@
+id=hotspot_gateway
+name=热点网关 (Hotspot Gateway)
+version=v1.0.0
+versionCode=1
+author=azlove2021
+description=把手机热点变成透明代理网关：mihomo + iptables TPROXY，局域网设备连上即翻墙。装完再装配套 APK 即可使用。
