@@ -304,10 +304,14 @@ public class MainActivity extends Activity {
                 startDaemon();
                 return "OK|already";
             }
-            // 3) 解压内置种子
+            // 3) 从已下载的 module.zip 解压
+            File zip = new File(getFilesDir(), "module.zip");
+            if (!zip.exists() || zip.length() < 1024 * 1024) {
+                return "NEED_DOWNLOAD|" + zip.length();
+            }
             File seedDir = new File(getFilesDir(), "seed");
             try {
-                unzipFromAssets("seed.zip", seedDir);
+                unzipFile(zip, seedDir);
             } catch (Exception e) {
                 return "ERR|解压失败: " + e;
             }
@@ -331,6 +335,28 @@ public class MainActivity extends Activity {
 
         private void startDaemon() {
             exec("(setsid sh /data/adb/gateway/daemon.sh >/dev/null 2>&1 &); echo started");
+        }
+
+        private void unzipFile(File zip, File targetDir) throws Exception {
+            targetDir.mkdirs();
+            try (java.util.zip.ZipInputStream zis =
+                     new java.util.zip.ZipInputStream(new java.io.FileInputStream(zip))) {
+                java.util.zip.ZipEntry e;
+                byte[] buf = new byte[65536];
+                while ((e = zis.getNextEntry()) != null) {
+                    if (e.isDirectory()) continue;
+                    String name = e.getName();
+                    if (name.startsWith("files/")) name = name.substring(6);
+                    else if (!name.endsWith(".sh") && !name.endsWith(".yaml") && !name.endsWith(".dat") && !name.equals("mihomo")) continue;
+                    File f = new File(targetDir, name);
+                    File parent = f.getParentFile();
+                    if (parent != null) parent.mkdirs();
+                    try (FileOutputStream o = new FileOutputStream(f)) {
+                        int n;
+                        while ((n = zis.read(buf)) > 0) o.write(buf, 0, n);
+                    }
+                }
+            }
         }
 
         private void unzipFromAssets(String asset, File targetDir) throws Exception {
@@ -389,6 +415,64 @@ public class MainActivity extends Activity {
                 startActivity(i);
                 return "OK|settings";
             } catch (Exception e) { return "ERR|" + e; }
+        }
+
+
+        private volatile long dlBytes = 0;
+        private volatile long dlTotal = 0;
+        private volatile String dlState = "idle";
+
+        @JavascriptInterface
+        public String downloadProgress() {
+            return dlState + "|" + dlBytes + "|" + dlTotal;
+        }
+
+        /** 下载模块包到私有目录，url 可为多个用 | 分隔，依次尝试 */
+        @JavascriptInterface
+        public String downloadModule(String urls) {
+            File out = new File(getFilesDir(), "module.zip");
+            String[] list = urls.split("\\|");
+            for (String u : list) {
+                if (u.trim().isEmpty()) continue;
+                java.net.HttpURLConnection c = null;
+                try {
+                    dlState = "downloading"; dlBytes = 0; dlTotal = 0;
+                    java.net.URL url = new java.net.URL(u.trim());
+                    c = (java.net.HttpURLConnection) url.openConnection();
+                    c.setConnectTimeout(15000);
+                    c.setReadTimeout(60000);
+                    c.setInstanceFollowRedirects(true);
+                    c.setRequestProperty("User-Agent", "dsh-gateway");
+                    dlTotal = c.getContentLength();
+                    try (java.io.InputStream in = c.getInputStream();
+                         FileOutputStream o = new FileOutputStream(out)) {
+                        byte[] buf = new byte[65536];
+                        int n;
+                        while ((n = in.read(buf)) > 0) {
+                            o.write(buf, 0, n);
+                            dlBytes += n;
+                        }
+                    }
+                    if (out.length() < 1024 * 1024) throw new Exception("文件过小 " + out.length());
+                    dlState = "done";
+                    return "OK|" + out.length() + "|" + u;
+                } catch (Exception e) {
+                    dlState = "error";
+                    // 继续尝试下一个源
+                } finally {
+                    if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
+                }
+            }
+            dlState = "failed";
+            return "ERR|所有下载源都失败";
+        }
+
+        /** 异步下载，JS 轮询 downloadProgress() */
+        @JavascriptInterface
+        public void startDownload(final String urls) {
+            new Thread(new Runnable() {
+                @Override public void run() { downloadModule(urls); }
+            }).start();
         }
 
         @JavascriptInterface

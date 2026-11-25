@@ -8,6 +8,7 @@ PLAT=sdk/android-35/android.jar
 BUILD=/data/local/tmp/gwbuild
 
 echo "== 1/6 推送资源到手机 =="
+$ADB shell "su -c 'rm -rf $BUILD/assets $BUILD/res'" >/dev/null 2>&1
 $ADB push AndroidManifest.xml $BUILD/ >/dev/null
 $ADB push res $BUILD/ >/dev/null
 $ADB push assets $BUILD/ >/dev/null

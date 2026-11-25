@@ -150,7 +150,14 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
     <div id="nrTitle" style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:6px">⚠️ 未检测到 root 环境</div>
     <div id="nrBody" style="font-size:12.5px;color:var(--dim);line-height:1.7"></div>
     <button class="btn ghost" id="bDeploy" style="margin-top:10px;display:none">一键部署（需要 root 授权）</button>
+    <button class="btn" id="bDownload" style="margin-top:8px;display:none">下载内核（约 27MB）</button>
     <button class="btn ghost" id="bExport" style="margin-top:8px;display:none">导出模块包并打开 root 管理器</button>
+    <div id="dlBar" style="display:none;margin-top:10px">
+      <div style="height:6px;background:var(--line);border-radius:3px;overflow:hidden">
+        <div id="dlFill" style="height:100%;width:0%;background:var(--blue);transition:width .2s"></div>
+      </div>
+      <div id="dlTxt" style="font-size:12px;color:var(--dim);margin-top:6px">准备下载…</div>
+    </div>
     <div style="font-size:12.5px;color:var(--dim);line-height:1.7">
       网关模式需要 root 才能改 iptables。现在切到<b>代理共享模式</b>：<br>
       在 A 手机开任意 Clash 客户端并打开「允许局域网连接」，然后让 B 手机按下表填代理。
@@ -656,6 +663,48 @@ $('#bSub').onclick = async () => {
   $('#subHint').textContent = res.slice(0, 300);
 };
 $('#bSubReload').onclick = loadProxies;
+const MIRRORS = [
+  'https://github.com/azlove2021/hotspot-gateway/releases/download/v1.2.0/hotspot-gateway-module.zip',
+  'https://gh-proxy.com/https://github.com/azlove2021/hotspot-gateway/releases/download/v1.2.0/hotspot-gateway-module.zip',
+  'https://ghfast.top/https://github.com/azlove2021/hotspot-gateway/releases/download/v1.2.0/hotspot-gateway-module.zip'
+];
+
+$('#bDownload').onclick = async () => {
+  $('#bDownload').disabled = true;
+  $('#bDownload').textContent = '下载中…';
+  $('#dlBar').style.display = '';
+  Native.startDownload(MIRRORS.join('|'));
+  for (let i = 0; i < 600; i++) {
+    await new Promise(r => setTimeout(r, 500));
+    const st = (Native.downloadProgress() || '').split('|');
+    const state = st[0], got = +st[1] || 0, total = +st[2] || 0;
+    const pct = total > 0 ? Math.min(100, got / total * 100) : 0;
+    $('#dlFill').style.width = pct + '%';
+    $('#dlTxt').textContent = state === 'downloading'
+      ? `${(got/1048576).toFixed(1)} / ${total > 0 ? (total/1048576).toFixed(1) : '?'} MB`
+      : state === 'done' ? '下载完成，正在部署…' : state === 'failed' ? '下载失败' : '连接中…';
+    if (state === 'done') {
+      const r = Native.provision() || '';
+      if (r.indexOf('OK') === 0) {
+        $('#dlTxt').textContent = '部署完成';
+        toast('部署成功');
+        setTimeout(() => location.reload(), 900);
+      } else {
+        $('#dlTxt').textContent = '部署失败：' + r.replace('ERR|','');
+        $('#bDownload').disabled = false;
+        $('#bDownload').textContent = '重试部署';
+      }
+      return;
+    }
+    if (state === 'failed') {
+      $('#dlTxt').textContent = '下载失败，检查网络后重试';
+      $('#bDownload').disabled = false;
+      $('#bDownload').textContent = '重新下载';
+      return;
+    }
+  }
+};
+
 $('#bExport').onclick = async () => {
   const r = Native.exportModule() || '';
   if (r.indexOf('OK') === 0) {
@@ -818,6 +867,12 @@ window.onload = () => {
     if (r.indexOf('OK') === 0) {
       rootOk = true;
       toast('已自动部署完成');
+    } else if (r.indexOf('NEED_DOWNLOAD') === 0) {
+      enterNoRootMode();
+      $('#nrTitle').textContent = '⬇️ 需要先下载内核';
+      $('#nrBody').innerHTML = '内核和数据共约 27MB，下载一次即可（会缓存，之后不再下载）。';
+      $('#bDownload').style.display = '';
+      $('#bExport').style.display = '';
     } else if (r.indexOf('NO_ROOT') === 0) {
       enterNoRootMode();
       $('#nrTitle').textContent = '⚠️ 没有拿到 root 权限';
