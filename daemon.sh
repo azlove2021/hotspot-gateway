@@ -49,6 +49,11 @@ while true; do
     fi
   fi
 
+  # ---------- 热点 IPv6 守卫（每 10 秒；系统重开热点会恢复 IPv6）----------
+  if [ $((TICK % 10)) -eq 0 ] && [ -x "$D/hotspot_v6guard.sh" ]; then
+    sh $D/hotspot_v6guard.sh 2>/dev/null
+  fi
+
   # ---------- 订阅定时更新（每 60 秒检查一次是否到期）----------
   TICK=$((TICK + 1))
   if [ $((TICK % 60)) -eq 0 ] && [ -x "$D/sub_manager.sh" ]; then
