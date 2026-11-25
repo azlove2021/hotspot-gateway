@@ -289,6 +289,108 @@ public class MainActivity extends Activity {
             return false;
         }
 
+
+        /** 首次部署：内置种子解压 → su 复制到 /data/adb/gateway → 起守护 */
+        @JavascriptInterface
+        public String provision() {
+            // 1) 测 root
+            String id = exec("id");
+            if (id == null || !id.contains("uid=0")) {
+                return "NO_ROOT|" + (id == null ? "su 不可用" : id.replace("\n", " "));
+            }
+            // 2) 已部署？
+            String chk = exec("test -f /data/adb/gateway/mihomo && echo DEPLOYED || echo MISSING");
+            if (chk != null && chk.contains("DEPLOYED")) {
+                startDaemon();
+                return "OK|already";
+            }
+            // 3) 解压内置种子
+            File seedDir = new File(getFilesDir(), "seed");
+            try {
+                unzipFromAssets("seed.zip", seedDir);
+            } catch (Exception e) {
+                return "ERR|解压失败: " + e;
+            }
+            // 4) 用 su 部署
+            String cmd =
+                "mkdir -p /data/adb/gateway; " +
+                "cp -f " + seedDir.getAbsolutePath() + "/* /data/adb/gateway/ 2>/dev/null; " +
+                "chmod 755 /data/adb/gateway/mihomo /data/adb/gateway/*.sh 2>/dev/null; " +
+                "[ -f /data/adb/gateway/config.yaml ] || cp -f /data/adb/gateway/config.template.yaml /data/adb/gateway/config.yaml; " +
+                "chmod 600 /data/adb/gateway/config.yaml; " +
+                "mkdir -p /data/adb/service.d; " +
+                "cp -f " + seedDir.getAbsolutePath() + "/service_daemon.sh /data/adb/service.d/gw_daemon.sh; " +
+                "chmod 755 /data/adb/service.d/gw_daemon.sh; " +
+                "echo PROVISIONED";
+            String out = exec(cmd);
+            // 5) 起守护
+            startDaemon();
+            if (out != null && out.contains("PROVISIONED")) return "OK|deployed";
+            return "ERR|" + (out == null ? "复制失败" : out.replace("\n", " "));
+        }
+
+        private void startDaemon() {
+            exec("(setsid sh /data/adb/gateway/daemon.sh >/dev/null 2>&1 &); echo started");
+        }
+
+        private void unzipFromAssets(String asset, File targetDir) throws Exception {
+            targetDir.mkdirs();
+            try (java.util.zip.ZipInputStream zis =
+                     new java.util.zip.ZipInputStream(getAssets().open(asset))) {
+                java.util.zip.ZipEntry e;
+                byte[] buf = new byte[65536];
+                while ((e = zis.getNextEntry()) != null) {
+                    if (e.isDirectory()) continue;
+                    File f = new File(targetDir, e.getName());
+                    File parent = f.getParentFile();
+                    if (parent != null) parent.mkdirs();
+                    try (FileOutputStream o = new FileOutputStream(f)) {
+                        int n;
+                        while ((n = zis.read(buf)) > 0) o.write(buf, 0, n);
+                    }
+                }
+            }
+        }
+
+
+        /** 把内置模块包导出到 App 外部目录，供 root 管理器安装 */
+        @JavascriptInterface
+        public String exportModule() {
+            try {
+                File dir = getExternalFilesDir(null);
+                if (dir == null) dir = getFilesDir();
+                dir.mkdirs();
+                File out = new File(dir, "hotspot-gateway-module.zip");
+                try (java.io.InputStream in = getAssets().open("seed.zip");
+                     FileOutputStream o = new FileOutputStream(out)) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                }
+                return "OK|" + out.getAbsolutePath();
+            } catch (Exception e) {
+                return "ERR|" + e;
+            }
+        }
+
+        /** 打开 KernelSU / Magisk 管理器 */
+        @JavascriptInterface
+        public String openRootManager() {
+            String[] pkgs = {"me.weishu.kernelsu", "com.topjohnwu.magisk", "me.bmax.apatch", "com.rifsxd.ksunext"};
+            for (String p : pkgs) {
+                try {
+                    android.content.Intent i = getPackageManager().getLaunchIntentForPackage(p);
+                    if (i != null) { i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); return "OK|" + p; }
+                } catch (Exception ignored) {}
+            }
+            try {
+                android.content.Intent i = new android.content.Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS);
+                i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(i);
+                return "OK|settings";
+            } catch (Exception e) { return "ERR|" + e; }
+        }
+
         @JavascriptInterface
         public String heartbeatFile() {
             return hbFile.getAbsolutePath();

@@ -147,7 +147,10 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
   </div>
 
   <div class="card" id="noRootCard" style="display:none;background:var(--amber-soft);border-color:transparent">
-    <div style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:6px">⚠️ 未检测到 root 环境</div>
+    <div id="nrTitle" style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:6px">⚠️ 未检测到 root 环境</div>
+    <div id="nrBody" style="font-size:12.5px;color:var(--dim);line-height:1.7"></div>
+    <button class="btn ghost" id="bDeploy" style="margin-top:10px;display:none">一键部署（需要 root 授权）</button>
+    <button class="btn ghost" id="bExport" style="margin-top:8px;display:none">导出模块包并打开 root 管理器</button>
     <div style="font-size:12.5px;color:var(--dim);line-height:1.7">
       网关模式需要 root 才能改 iptables。现在切到<b>代理共享模式</b>：<br>
       在 A 手机开任意 Clash 客户端并打开「允许局域网连接」，然后让 B 手机按下表填代理。
@@ -653,6 +656,36 @@ $('#bSub').onclick = async () => {
   $('#subHint').textContent = res.slice(0, 300);
 };
 $('#bSubReload').onclick = loadProxies;
+$('#bExport').onclick = async () => {
+  const r = Native.exportModule() || '';
+  if (r.indexOf('OK') === 0) {
+    const path = r.split('|')[1];
+    toast('已导出到 ' + path);
+    $('#nrBody').innerHTML = '模块包已导出：<br><code style="font-size:11px;word-break:break-all">' + path +
+      '</code><br><br>接下来：在 root 管理器里安装这个 zip → 回到本 App 重新打开。';
+    Native.openRootManager();
+  } else {
+    toast('导出失败');
+  }
+};
+
+$('#bDeploy').onclick = async () => {
+  toast('正在申请 root 并部署…');
+  const el = $('#bDeploy');
+  el.disabled = true; el.textContent = '部署中（约 10 秒）';
+  let r = '';
+  try { r = Native.provision() || ''; } catch (e) { r = 'ERR|' + e; }
+  el.disabled = false; el.textContent = '一键部署（需要 root 授权）';
+  if (r.indexOf('OK') === 0) {
+    toast('部署成功');
+    $('#noRootCard').style.display = 'none';
+    setTimeout(() => location.reload(), 800);
+  } else {
+    $('#nrBody').textContent = r.replace('ERR|', '') + '（请确认已授予 root 权限）';
+    toast('部署失败');
+  }
+};
+
 $('#bSyncFl').onclick = async () => {
   toast('正在从 FlClash 同步…');
   const r = await run(`sh ${GW}/sync_flclash.sh 2>&1`);
@@ -775,10 +808,31 @@ function applyTheme(t) {
 /* ---------- 启动 ---------- */
 window.onload = () => {
   try { applyTheme(store.get('gw_theme', 'light')); } catch (e) {}
-  let rootOk = true;
+  let rootOk = false;
   try { rootOk = Native.daemonAlive(); } catch (e) { rootOk = false; }
-  if (!rootOk) { enterNoRootMode(); }
-  else refreshHome();
+
+  if (!rootOk) {
+    // 首次使用：尝试用内置种子自动部署（会弹 root 授权框）
+    let r = '';
+    try { r = Native.provision() || ''; } catch (e) { r = 'ERR|' + e; }
+    if (r.indexOf('OK') === 0) {
+      rootOk = true;
+      toast('已自动部署完成');
+    } else if (r.indexOf('NO_ROOT') === 0) {
+      enterNoRootMode();
+      $('#nrTitle').textContent = '⚠️ 没有拿到 root 权限';
+      $('#nrBody').innerHTML = '网关模式需要 root。请确认：<br>1. 手机已 root（KernelSU / Magisk / APatch）<br>2. 授权弹窗里点过「允许」<br>3. 或在管理器里手动给本 App root 权限<br><br>也可以直接装模块包（见 GitHub），或用下面的代理共享模式。';
+      $('#bDeploy').style.display = '';
+      $('#bExport').style.display = '';
+    } else {
+      enterNoRootMode();
+      $('#nrTitle').textContent = '⚠️ 自动部署未完成';
+      $('#nrBody').textContent = r.replace('ERR|', '');
+      $('#bDeploy').style.display = '';
+      $('#bExport').style.display = '';
+    }
+  }
+  if (rootOk) refreshHome();
   readSettings();
   setInterval(() => { if ($('#p-home').classList.contains('on')) refreshHome(); }, 4000);
 };
