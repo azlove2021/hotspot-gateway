@@ -401,6 +401,10 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
   <div class="card">
     <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">④ 常见问题</div>
     <div style="font-size:13.5px;line-height:1.9">
+      <b>界面数据全是「—」，状态显示未运行</b><br>
+      先看手机是不是息屏了。息屏或刚唤醒时 WebView 暂停刷新，解锁后等 2–3 秒会自动恢复；
+      也可以在底部切一下页面强制刷新一次。<br><br>
+
       <b>B 手机显示「已连接但无法访问互联网」</b><br>
       Android 的联网检测失败，不影响实际使用；浏览器能开网页就没事。<br><br>
       <b>只有部分 App 能上网</b><br>
@@ -409,6 +413,21 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
       网关模式有 90 秒心跳保护，会主动恢复默认网络，不会把你锁死。<br><br>
       <b>想换节点</b><br>
       节点页 → 点任意节点即可切换；订阅更新用「导入订阅」。
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">⑤ 项目地址与技术文档</div>
+    <div style="font-size:13.5px;line-height:1.8;color:var(--dim)">
+      原理、踩坑记录、运维命令都在 GitHub 上，点下面的按钮用浏览器打开。
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      <button class="btn" id="bGhRepo">打开 GitHub 仓库</button>
+      <button class="btn ghost" id="bGhDoc">看技术文档</button>
+      <button class="btn ghost" id="bGhRel">下载最新版本</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--dim2);margin-top:10px;word-break:break-all">
+      github.com/azlove2021/hotspot-gateway
     </div>
   </div>
 </div>
@@ -855,6 +874,11 @@ function applyTheme(t) {
 }
 
 /* ---------- 启动 ---------- */
+const GH = 'https://github.com/azlove2021/hotspot-gateway';
+$('#bGhRepo').onclick = () => Native.openUrl(GH);
+$('#bGhDoc').onclick = () => Native.openUrl(GH + '/blob/main/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3-%E7%83%AD%E7%82%B9%E7%BD%91%E5%85%B3.md');
+$('#bGhRel').onclick = () => Native.openUrl(GH + '/releases/latest');
+
 window.onload = () => {
   try { applyTheme(store.get('gw_theme', 'light')); } catch (e) {}
   let rootOk = false;
@@ -875,8 +899,12 @@ window.onload = () => {
       $('#bExport').style.display = '';
     } else if (r.indexOf('NO_ROOT') === 0) {
       enterNoRootMode();
-      $('#nrTitle').textContent = '⚠️ 没有拿到 root 权限';
-      $('#nrBody').innerHTML = '网关模式需要 root。请确认：<br>1. 手机已 root（KernelSU / Magisk / APatch）<br>2. 授权弹窗里点过「允许」<br>3. 或在管理器里手动给本 App root 权限<br><br>也可以直接装模块包（见 GitHub），或用下面的代理共享模式。';
+      $('#nrTitle').textContent = '⚠️ 当前系统没向 App 提供 su';
+      $('#nrBody').innerHTML = '这通常<b>不是没授权</b>，而是部分 root 实现（例如新版 KernelSU 的 su 隔离）不允许普通 App 进程直接执行 su。<br><br>' +
+        '三个选择：<br>' +
+        '1. <b>导出模块包</b> → 在 root 管理器里装 → 重开本 App（最稳，一次搞定）<br>' +
+        '2. 试一下「一键部署」，部分设备可以直接成功<br>' +
+        '3. 用下面的<b>代理共享模式</b>，完全不需要 root';
       $('#bDeploy').style.display = '';
       $('#bExport').style.display = '';
     } else {

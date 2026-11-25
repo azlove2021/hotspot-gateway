@@ -475,6 +475,20 @@ public class MainActivity extends Activity {
             }).start();
         }
 
+        /** 用系统浏览器打开链接 */
+        @JavascriptInterface
+        public String openUrl(String url) {
+            try {
+                android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(url));
+                i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(i);
+                return "OK";
+            } catch (Exception e) {
+                return "ERR|" + e;
+            }
+        }
+
         @JavascriptInterface
         public String heartbeatFile() {
             return hbFile.getAbsolutePath();
