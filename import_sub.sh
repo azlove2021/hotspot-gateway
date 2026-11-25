@@ -9,7 +9,19 @@ URL="$1"
 [ -z "$URL" ] && { echo "ERR 缺少订阅地址"; exit 1; }
 
 echo "下载: $URL"
-curl -s -L -m 40 -A "clash-verge/v2.4.2" "$URL" -o "$TMP" || { echo "ERR 下载失败"; exit 1; }
+HDR=$D/.sub_headers
+curl -s -L -m 40 -A "clash-verge/v2.4.2" -D "$HDR" "$URL" -o "$TMP" || { echo "ERR 下载失败"; exit 1; }
+
+# 解析 subscription-userinfo（机场流量：upload/download/total/expire）
+UI=$(grep -i "^subscription-userinfo:" "$HDR" 2>/dev/null | head -1 | sed 's/^[^:]*: *//' | tr -d '\r')
+if [ -n "$UI" ]; then
+  echo "$UI" > "$D/.sub_userinfo"
+  echo "流量信息: $UI"
+fi
+# 机场官网（部分机场提供）
+WU=$(grep -i "^profile-web-page-url:" "$HDR" 2>/dev/null | head -1 | sed 's/^[^:]*: *//' | tr -d '\r')
+[ -n "$WU" ] && echo "$WU" > "$D/.sub_webpage"
+rm -f "$HDR"
 SIZE=$(wc -c < "$TMP" 2>/dev/null)
 echo "大小: $SIZE 字节"
 [ "$SIZE" -lt 40 ] && { echo "ERR 内容过短，可能下载失败"; head -c 200 "$TMP"; exit 1; }

@@ -225,7 +225,18 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <div style="font-weight:700;font-size:14.5px">当前订阅</div>
-      <div id="subName" style="color:var(--dim);font-size:12px;max-width:58%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">未导入</div>
+      <div style="display:flex;align-items:center;gap:6px;max-width:58%;justify-content:flex-end">
+        <div id="subName" style="color:var(--dim);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">未导入</div>
+        <button id="bSubWeb" style="display:none;background:none;border:0;color:var(--blue);font-size:12px;padding:0">官网</button>
+      </div>
+    </div>
+    <div id="subTraffic" style="display:none;margin-top:4px">
+      <div class="row" style="padding:9px 0;border-top:0"><span class="k">已用流量</span><span class="v" id="subUsed">—</span></div>
+      <div style="height:8px;background:var(--line);border-radius:5px;overflow:hidden;margin:2px 0 10px">
+        <div id="subBar" style="height:100%;width:0%;background:var(--blue);border-radius:5px;transition:width .3s"></div>
+      </div>
+      <div class="row" style="padding:0 0 9px"><span class="k">剩余</span><span class="v" id="subLeft" style="color:var(--green)">—</span></div>
+      <div class="row" style="padding:0 0 9px"><span class="k">到期时间</span><span class="v" id="subExpire">—</span></div>
     </div>
     <div class="row" style="padding:9px 0"><span class="k">节点数</span><span class="v" id="subCount">—</span></div>
     <div class="row" style="padding:9px 0"><span class="k">上次更新</span><span class="v" id="subLast">—</span></div>
@@ -765,6 +776,26 @@ async function loadSubInfo() {
     $('#subLast').textContent = fmtAgo(d.last);
     $('#subNext').textContent = d.interval > 0 ? fmtIn(d.next) : '已关闭';
     $$('#segInterval button').forEach(b => b.classList.toggle('on', String(d.interval) === b.dataset.v));
+
+    // 流量
+    const GB = 1073741824;
+    if (d.total > 0) {
+      const used = (d.up || 0) + (d.down || 0);
+      const pct = Math.min(100, used / d.total * 100);
+      $('#subTraffic').style.display = '';
+      $('#subUsed').textContent = (used / GB).toFixed(2) + ' / ' + (d.total / GB).toFixed(0) + ' GB';
+      $('#subBar').style.width = pct.toFixed(1) + '%';
+      $('#subBar').style.background = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--amber)' : 'var(--blue)';
+      $('#subLeft').textContent = ((d.total - used) / GB).toFixed(2) + ' GB';
+      $('#subExpire').textContent = d.expire > 0
+        ? new Date(d.expire * 1000).toLocaleDateString('zh-CN') : '不过期';
+    } else {
+      $('#subTraffic').style.display = 'none';
+    }
+    if (d.web) {
+      $('#bSubWeb').style.display = '';
+      $('#bSubWeb').onclick = () => Native.openUrl(d.web);
+    }
     $('#subHint').textContent = d.host ? ('订阅地址：' + d.host) : '导入后会写入 subscription.conf，可自动更新。';
   } catch (e) {}
 }
@@ -793,7 +824,8 @@ $('#bSub').onclick = async () => {
   if (!url) return toast('先填订阅地址');
   const interval = $('#segInterval .on') ? $('#segInterval .on').dataset.v : '3600';
   toast('导入中…');
-  await run(`sh ${GW}/sub_manager.sh save '${url.replace(/'/g,'')}' '' ${interval} 2>&1`);
+  const safe = url.replace(/'/g, "'\\''");
+  await run(`sh ${GW}/sub_manager.sh save '${safe}' '' ${interval} 2>&1`);
   const res = await run(`sh ${GW}/sub_manager.sh update 2>&1`);
   toast(/OK/.test(res) ? '订阅已导入并生效' : '导入失败');
   $('#subHint').textContent = res.slice(0, 300);

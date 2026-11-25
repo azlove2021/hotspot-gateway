@@ -57,10 +57,24 @@ case "$cmd" in
     if load; then
       NOW=$(date +%s)
       NEXT=$((SUB_LAST + SUB_INTERVAL))
-      printf '{"name":"%s","host":"%s","count":%s,"last":%s,"interval":%s,"next":%s,"now":%s}\n' \
-        "$SUB_NAME" "$(mask_url "$SUB_URL")" "${SUB_COUNT:-0}" "${SUB_LAST:-0}" "${SUB_INTERVAL:-0}" "$NEXT" "$NOW"
+      UP=0; DOWN=0; TOTAL=0; EXPIRE=0
+      if [ -f "$D/.sub_userinfo" ]; then
+        UI=$(cat "$D/.sub_userinfo" 2>/dev/null)
+        UP=$(echo "$UI" | grep -oE 'upload=[0-9]+' | cut -d= -f2)
+        DOWN=$(echo "$UI" | grep -oE 'download=[0-9]+' | cut -d= -f2)
+        TOTAL=$(echo "$UI" | grep -oE 'total=[0-9]+' | cut -d= -f2)
+        EXPIRE=$(echo "$UI" | grep -oE 'expire=[0-9]+' | cut -d= -f2)
+      fi
+      [ -z "$UP" ] && UP=0
+      [ -z "$DOWN" ] && DOWN=0
+      [ -z "$TOTAL" ] && TOTAL=0
+      [ -z "$EXPIRE" ] && EXPIRE=0
+      WEB=""
+      [ -f "$D/.sub_webpage" ] && WEB=$(cat "$D/.sub_webpage" 2>/dev/null)
+      printf '{"name":"%s","host":"%s","web":"%s","count":%s,"last":%s,"interval":%s,"next":%s,"now":%s,"up":%s,"down":%s,"total":%s,"expire":%s}\n' \
+        "$SUB_NAME" "$(mask_url "$SUB_URL")" "$WEB" "${SUB_COUNT:-0}" "${SUB_LAST:-0}" "${SUB_INTERVAL:-0}" "$NEXT" "$NOW" "$UP" "$DOWN" "$TOTAL" "$EXPIRE"
     else
-      echo '{"name":"","host":"","count":0,"last":0,"interval":0,"next":0,"now":0}'
+      echo '{"name":"","host":"","web":"","count":0,"last":0,"interval":0,"next":0,"now":0,"up":0,"down":0,"total":0,"expire":0}'
     fi
     ;;
   check)
