@@ -122,6 +122,18 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
 [data-theme="light"] .node.sel{background:#eff4ff}
 [data-theme="light"] input,[data-theme="light"] select{background:#f8fafc}
 
+
+.acc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)}
+.acc-h{display:flex;justify-content:space-between;align-items:center;padding:15px 16px;
+  font-size:14.5px;font-weight:700;cursor:pointer;user-select:none}
+.acc-h .chev{width:18px;height:18px;stroke:var(--dim);fill:none;stroke-width:2.2;
+  stroke-linecap:round;transition:transform .22s}
+.acc.open .acc-h .chev{transform:rotate(180deg)}
+.acc-b{display:none;padding:0 16px 16px;font-size:13.5px;line-height:1.9;color:var(--txt)}
+.acc.open .acc-b{display:block}
+.acc-b code{background:var(--card2);padding:1px 5px;border-radius:4px;font-size:12.5px}
+
 </style>
 </head>
 <body>
@@ -353,81 +365,99 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
 
 <!-- ============ 教程 ============ -->
 <div class="page" id="p-help">
-  <h1>使用教程</h1>
-  <div class="sub">三分钟看懂：IP 在哪、代理怎么填、电脑怎么连</div>
+  <h1>教程</h1>
+  <div class="sub">点标题展开，按需要看</div>
 
-  <div class="card">
-    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">① 两台手机的 IP 在哪看</div>
-    <div style="font-size:13.5px;line-height:1.9;color:var(--txt)">
-      <b>A 手机（开热点的这台）</b><br>
-      · 打开本 App → 仪表盘 → 「本机网卡」<br>
-      · 热点那一行的地址就是网关 IP，例如 <code style="background:var(--card2);padding:1px 5px;border-radius:4px">10.247.101.131</code><br><br>
-      <b>B 手机（连热点的那台）</b><br>
-      · 设置 → WLAN → 点当前连接的热点 → 查看「IP 地址」<br>
-      · 一般是 <code style="background:var(--card2);padding:1px 5px;border-radius:4px">10.247.101.x</code>，和 A 手机同一网段<br>
-      · 也可以回到本 App 仪表盘的「B 手机（热点客户端）」里直接看到
+  <div class="card" style="padding:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-weight:700;font-size:14.5px">项目与文档</div>
+      <div style="font-size:11px;color:var(--dim2)">azlove2021/hotspot-gateway</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <button class="btn" id="bGhRepo" style="padding:11px 4px;font-size:13px">GitHub</button>
+      <button class="btn ghost" id="bGhDoc" style="padding:11px 4px;font-size:13px">文档</button>
+      <button class="btn ghost" id="bGhRel" style="padding:11px 4px;font-size:13px">下载</button>
     </div>
   </div>
 
-  <div class="card">
-    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">② B 手机怎么填代理</div>
-    <div style="font-size:13.5px;line-height:1.9">
-      只有<b>无 root 代理共享模式</b>才需要手动填；网关模式是不用填的。<br><br>
+  <div class="acc open">
+    <div class="acc-h"><span>① 两台手机的 IP 在哪看</span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="acc-b">
+      <b>A 手机（开热点这台）</b><br>
+      本 App → 仪表盘 → 「本机网卡」，热点那行就是网关 IP，例如 <code>10.247.101.131</code><br><br>
+      <b>B 手机（连热点这台）</b><br>
+      设置 → WLAN → 点当前连接 → 看「IP 地址」，一般和 A 同一网段<br>
+      也可以直接看仪表盘的「B 手机（热点客户端）」列表
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-h"><span>② B 手机怎么填代理</span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="acc-b">
+      只有<b>无 root 代理共享模式</b>才需要手动填，网关模式不用。<br><br>
       <b>安卓</b><br>
-      1. 设置 → WLAN → 长按热点名 → 修改网络<br>
-      2. 展开「高级选项」→ 代理 → 选「手动」<br>
-      3. 主机名填 A 手机的网关 IP，端口填 <code style="background:var(--card2);padding:1px 5px;border-radius:4px">7891</code><br>
-      4. 保存，重新连一次<br><br>
+      设置 → WLAN → 长按热点 → 修改网络 → 高级选项 → 代理 → 手动<br>
+      主机名填网关 IP，端口 <code>7891</code><br><br>
       <b>iPhone</b><br>
-      设置 → 无线局域网 → 点热点右侧 ⓘ → 配置代理 → 手动<br>
+      无线局域网 → 热点右侧 ⓘ → 配置代理 → 手动<br>
       服务器填网关 IP，端口 7891
     </div>
   </div>
 
-  <div class="card">
-    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">③ 电脑能不能用</div>
-    <div style="font-size:13.5px;line-height:1.9">
-      能，两种方式：<br><br>
-      <b>方式一：连 A 手机的热点（推荐）</b><br>
-      · 电脑连上热点后，网关模式下<b>什么都不用设</b><br>
-      · 代理共享模式下，设置系统 HTTP 代理指向 A 手机 IP:7891<br><br>
-      <b>Windows</b>：设置 → 网络和 Internet → 代理 → 手动设置代理 → 地址 填 IP，端口 7891<br>
-      <b>macOS</b>：系统设置 → 网络 → 高级 → 代理 → 勾选「网页代理(HTTP)」和「安全网页代理(HTTPS)」，填同样的地址端口<br><br>
-      <b>方式二：电脑连同一个路由器</b><br>
-      A 手机连路由器（不一定是热点），电脑和 A 在同一局域网，代理指向 A 的路由器 IP:7891。
+  <div class="acc">
+    <div class="acc-h"><span>③ 能不能用 WiFi 不耗流量</span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="acc-b">
+      可以。手机支持 WiFi 与热点同时工作（STA+AP 并发）就行。<br><br>
+      <b>怎么做</b><br>
+      1. 系统设置里连好一个 WiFi<br>
+      2. 打开热点（顺序反过来也行）<br>
+      3. 仪表盘「本机网卡」会同时出现 <code>wlan0</code> 和 <code>wlan2</code><br>
+      4. 不用改任何配置，默认路由自动切到 WiFi<br><br>
+      <b>实测（一加 Ace 2 Pro）</b><br>
+      三接口并存，路由自动变成 <code>dev wlan0</code>，两台设备正常翻墙。
+      手机自己的流量仍走原 WiFi，只有热点客户端被代理。<br><br>
+      <b>注意</b><br>
+      · 频段错开最好（WiFi 连 5G、热点开 2.4G），同频段速度会砍半<br>
+      · 少数 ROM 开热点会断 WiFi，那就只能走移动数据<br>
+      · 切换 WiFi 时 B 手机会断 3–5 秒，之后自动恢复
     </div>
   </div>
 
-  <div class="card">
-    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">④ 常见问题</div>
-    <div style="font-size:13.5px;line-height:1.9">
-      <b>界面数据全是「—」，状态显示未运行</b><br>
-      先看手机是不是息屏了。息屏或刚唤醒时 WebView 暂停刷新，解锁后等 2–3 秒会自动恢复；
-      也可以在底部切一下页面强制刷新一次。<br><br>
+  <div class="acc">
+    <div class="acc-h"><span>④ 电脑能不能用</span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="acc-b">
+      能。<br><br>
+      <b>方式一：连 A 手机的热点（推荐）</b><br>
+      网关模式下什么都不用设；代理共享模式下设系统 HTTP 代理指向 A 的 IP:7891<br><br>
+      <b>Windows</b>：设置 → 网络和 Internet → 代理 → 手动设置代理<br>
+      <b>macOS</b>：系统设置 → 网络 → 高级 → 代理 → 勾选网页代理与安全网页代理<br><br>
+      <b>方式二：电脑连同一个路由器</b><br>
+      A 手机连路由器，电脑和 A 同局域网，代理指向 A 的路由器 IP:7891
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-h"><span>⑤ 常见问题</span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="acc-b">
+      <b>界面数据全是「—」</b><br>
+      先看手机是不是息屏了。息屏或刚唤醒时 WebView 暂停刷新，解锁后 2–3 秒自动恢复；也可以切一下底部页面强制刷新。<br><br>
 
       <b>B 手机显示「已连接但无法访问互联网」</b><br>
-      Android 的联网检测失败，不影响实际使用；浏览器能开网页就没事。<br><br>
+      Android 联网检测失败，不影响实际使用，浏览器能开网页就没事。<br><br>
+
       <b>只有部分 App 能上网</b><br>
       代理共享模式下，不认系统代理的 App（部分游戏、Netflix）走不了，这是代理模式的固有限制。要全局就得上 root 用网关模式。<br><br>
-      <b>关掉 App 后 B 手机断网</b><br>
-      网关模式有 90 秒心跳保护，会主动恢复默认网络，不会把你锁死。<br><br>
-      <b>想换节点</b><br>
-      节点页 → 点任意节点即可切换；订阅更新用「导入订阅」。
-    </div>
-  </div>
 
-  <div class="card">
-    <div style="font-size:15.5px;font-weight:700;margin-bottom:10px">⑤ 项目地址与技术文档</div>
-    <div style="font-size:13.5px;line-height:1.8;color:var(--dim)">
-      原理、踩坑记录、运维命令都在 GitHub 上，点下面的按钮用浏览器打开。
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
-      <button class="btn" id="bGhRepo">打开 GitHub 仓库</button>
-      <button class="btn ghost" id="bGhDoc">看技术文档</button>
-      <button class="btn ghost" id="bGhRel">下载最新版本</button>
-    </div>
-    <div style="font-size:11.5px;color:var(--dim2);margin-top:10px;word-break:break-all">
-      github.com/azlove2021/hotspot-gateway
+      <b>关掉 App 后 B 手机断网</b><br>
+      网关模式有 90 秒心跳保护，会主动恢复默认网络，不会锁死。<br><br>
+
+      <b>想换节点</b><br>
+      节点页 → 点任意节点即可切换；订阅更新用「导入订阅」或「从 FlClash 同步」。
     </div>
   </div>
 </div>
@@ -878,6 +908,8 @@ const GH = 'https://github.com/azlove2021/hotspot-gateway';
 $('#bGhRepo').onclick = () => Native.openUrl(GH);
 $('#bGhDoc').onclick = () => Native.openUrl(GH + '/blob/main/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3-%E7%83%AD%E7%82%B9%E7%BD%91%E5%85%B3.md');
 $('#bGhRel').onclick = () => Native.openUrl(GH + '/releases/latest');
+
+$$('.acc-h').forEach(h => h.onclick = () => h.parentElement.classList.toggle('open'));
 
 window.onload = () => {
   try { applyTheme(store.get('gw_theme', 'light')); } catch (e) {}
