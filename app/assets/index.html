@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>热点网关</title>
+<style>
+:root{
+  --bg:#f2f4f8; --card:#fff; --card2:#fafbfd; --line:#e8ebf0; --txt:#111827;
+  --dim:#6b7280; --dim2:#9ca3af; --blue:#1f6feb; --blue-soft:#eaf1fe;
+  --green:#12a150; --green-soft:#e7f7ee; --red:#e5484d; --red-soft:#fdecec;
+  --amber:#c98a00; --amber-soft:#fdf4e3;
+  --radius:18px; --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px -12px rgba(16,24,40,.10);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0d1117; --card:#161b22; --card2:#1a2029; --line:#232a35; --txt:#e6edf3;
+    --dim:#8b949e; --dim2:#6e7681; --blue:#4493f8; --blue-soft:#13233c;
+    --green:#3fb950; --green-soft:#12281a; --red:#f85149; --red-soft:#2b1414;
+    --amber:#d29922; --amber-soft:#2a2213;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5); }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font:15px/1.5 -apple-system,"Noto Sans SC",system-ui,sans-serif;
+  padding-bottom:calc(76px + env(safe-area-inset-bottom));overflow-x:hidden}
+.page{display:none;padding:18px 16px 8px}
+.page.on{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+h1{font-size:26px;font-weight:700;margin:4px 0 2px;letter-spacing:-.3px}
+.sub{color:var(--dim);font-size:12.5px;margin-bottom:16px}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;
+  box-shadow:var(--shadow);border:1px solid var(--line)}
+.card.tight{padding:6px 16px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;font-size:14.5px}
+.row+.row{border-top:1px solid var(--line)}
+.row .k{color:var(--dim)}
+.row .v{font-weight:600;font-variant-numeric:tabular-nums;max-width:62%;text-align:right;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;
+  font-size:13px;font-weight:600}
+.badge.g{background:var(--green-soft);color:var(--green)}
+.badge.r{background:var(--red-soft);color:var(--red)}
+.badge.b{background:var(--blue-soft);color:var(--blue)}
+.badge.a{background:var(--amber-soft);color:var(--amber)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+button{font-family:inherit;border:0;cursor:pointer;transition:transform .08s,opacity .15s}
+button:active{transform:scale(.985)}
+button:disabled{opacity:.45}
+.btn{width:100%;padding:15px;border-radius:14px;font-size:15.5px;font-weight:600;
+  background:var(--blue);color:#fff}
+.btn.ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line)}
+.btn.danger{background:var(--red-soft);color:var(--red)}
+.btn.green{background:var(--green)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mini{display:flex;flex-direction:column;gap:2px;background:var(--card2);border:1px solid var(--line);
+  border-radius:14px;padding:12px}
+.mini .l{font-size:11.5px;color:var(--dim)}
+.mini .n{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.mini .u{font-size:11px;color:var(--dim2)}
+.hero{background:linear-gradient(135deg,#1f6feb,#2f9bff);color:#fff;border:0}
+.hero .l{color:rgba(255,255,255,.82)}
+.hero .badge{background:rgba(255,255,255,.18);color:#fff}
+.hero .n{color:#fff}
+.seg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:3px}
+.seg button{flex:1;padding:9px;border-radius:9px;background:transparent;color:var(--dim);font-size:13px;font-weight:600}
+.seg button.on{background:var(--card);color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+input,select{width:100%;padding:12px 13px;border-radius:12px;border:1px solid var(--line);
+  background:var(--card2);color:var(--txt);font-size:14px;font-family:inherit;outline:none}
+input:focus{border-color:var(--blue)}
+.lbl{font-size:12px;color:var(--dim);margin:14px 0 6px;font-weight:600}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(18px);
+  border-top:1px solid var(--line);z-index:20}
+.tabs button{flex:1;background:none;color:var(--dim2);font-size:11px;font-weight:600;
+  display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0}
+.tabs button.on{color:var(--blue)}
+.tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.pg{background:var(--card);border-radius:14px;border:1px solid var(--line);overflow:hidden;margin-bottom:10px}
+.pg h4{margin:0;padding:12px 15px;font-size:13px;color:var(--dim);background:var(--card2);
+  display:flex;justify-content:space-between;align-items:center}
+.node{display:flex;align-items:center;gap:10px;padding:13px 15px;border-top:1px solid var(--line);
+  font-size:14.5px}
+.node:active{background:var(--card2)}
+.node .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node .lat{font-size:12px;font-variant-numeric:tabular-nums;color:var(--dim)}
+.node.sel{background:var(--blue-soft)}
+.node.sel .nm{color:var(--blue);font-weight:600}
+.tick{color:var(--blue);font-weight:700}
+pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;
+  font-size:11.5px;line-height:1.55;color:var(--dim);max-height:220px;overflow:auto;margin:0;
+  white-space:pre-wrap;word-break:break-all}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(127,127,127,.3);
+  border-top-color:currentColor;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hint{font-size:12px;color:var(--dim);line-height:1.7;margin-top:10px}
+.hint b{color:var(--amber)}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:rgba(17,24,39,.92);
+  color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;z-index:99;opacity:0;
+  transition:opacity .2s;pointer-events:none;max-width:86%}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ============ 仪表盘 ============ -->
+<div class="page on" id="p-home">
+  <h1>热点网关</h1>
+  <div class="sub">A 手机开热点 · B 手机连上即翻墙</div>
+
+  <div class="card hero">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div class="l" style="font-size:12px">状态</div>
+        <div class="n" id="hState" style="font-size:22px;margin-top:2px">未运行</div>
+      </div>
+      <span class="badge" id="hBadge"><span class="dot"></span>停止</span>
+    </div>
+    <div class="grid3" style="margin-top:16px">
+      <div><div class="l">上传</div><div class="n" id="hUp">0 <span class="u">KB/s</span></div></div>
+      <div><div class="l">下载</div><div class="n" id="hDown">0 <span class="u">KB/s</span></div></div>
+      <div><div class="l">连接数</div><div class="n" id="hConn">0</div></div>
+    </div>
+  </div>
+
+  <div class="card tight">
+    <div class="row"><span class="k">热点接口</span><span class="v" id="hIf">—</span></div>
+    <div class="row"><span class="k">热点网段</span><span class="v" id="hNet">—</span></div>
+    <div class="row"><span class="k">代理范围</span><span class="v" id="hScope">—</span></div>
+  </div>
+
+  <div class="card tight">
+    <div class="row"><span class="k">本机网卡</span><span class="v" id="ifCount">—</span></div>
+    <div id="ifList"></div>
+  </div>
+
+  <div class="card tight">
+    <div class="row"><span class="k">B 手机（热点客户端）</span><span class="v" id="cliCount">—</span></div>
+    <div id="cliList"></div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:12px">
+    <button class="btn green" id="bStart">启动网关</button>
+    <button class="btn danger" id="bStop">停止恢复</button>
+  </div>
+  <button class="btn ghost" id="bRestart" style="margin-bottom:12px">重启网关</button>
+
+  <div class="hint">默认只代理热点客户端，本机流量不受影响。<b>关闭 App 后 90 秒自动恢复默认网络。</b></div>
+</div>
+
+<!-- ============ 节点 ============ -->
+<div class="page" id="p-node">
+  <h1>节点</h1>
+  <div class="sub">订阅与节点切换</div>
+
+  <div class="card">
+    <div class="lbl" style="margin-top:0">订阅地址（Clash / mihomo 格式）</div>
+    <input id="subUrl" placeholder="https://example.com/sub?token=...">
+    <div class="grid2" style="margin-top:10px">
+      <button class="btn" id="bSub">导入订阅</button>
+      <button class="btn ghost" id="bSubReload">刷新节点</button>
+    </div>
+    <div class="hint" id="subHint">导入后会写入 proxy-providers，重启网关生效。</div>
+  </div>
+
+  <div class="card tight">
+    <div class="row"><span class="k">当前策略组</span><span class="v" id="nGroup">—</span></div>
+    <div class="row"><span class="k">当前节点</span><span class="v" id="nNow">—</span></div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:12px">
+    <button class="btn ghost" id="bDelayAll">全部测延迟</button>
+    <button class="btn ghost" id="bReloadCfg">重载配置</button>
+  </div>
+
+  <div id="nodeList"></div>
+</div>
+
+<!-- ============ 设置 ============ -->
+<div class="page" id="p-set">
+  <h1>设置</h1>
+  <div class="sub">改完记得保存并重启</div>
+
+  <div class="card">
+    <div class="lbl" style="margin-top:0">代理范围</div>
+    <div class="seg" id="segScope">
+      <button data-v="hotspot" class="on">只代理热点</button>
+      <button data-v="all">本机也走代理</button>
+    </div>
+
+    <div class="lbl">混合代理端口</div>
+    <input id="setMixed" type="number" placeholder="7891">
+
+    <div class="lbl">TPROXY 端口</div>
+    <input id="setTproxy" type="number" placeholder="7895">
+
+    <div class="lbl">DNS 端口</div>
+    <input id="setDns" type="number" placeholder="5354">
+
+    <div class="lbl">日志级别</div>
+    <select id="setLog">
+      <option value="silent">silent</option>
+      <option value="error">error</option>
+      <option value="warning">warning</option>
+      <option value="info">info</option>
+      <option value="debug">debug</option>
+    </select>
+
+    <div class="lbl">代理模式</div>
+    <select id="setMode">
+      <option value="rule">规则（推荐）</option>
+      <option value="global">全局</option>
+      <option value="direct">直连</option>
+    </select>
+
+    <div class="grid2" style="margin-top:16px">
+      <button class="btn" id="bSave">保存并重启</button>
+      <button class="btn ghost" id="bReadCfg">读取当前</button>
+    </div>
+  </div>
+
+  <div class="card tight">
+    <div class="row"><span class="k">允许局域网连接</span><span class="v" id="sLan">—</span></div>
+    <div class="row"><span class="k">IPv6 代理</span><span class="v" id="sV6">—</span></div>
+    <div class="row"><span class="k">配置文件</span><span class="v">config.yaml</span></div>
+  </div>
+
+  <button class="btn danger" id="bPanic" style="margin-bottom:12px">紧急恢复（清空所有规则）</button>
+</div>
+
+<!-- ============ 诊断 ============ -->
+<div class="page" id="p-diag">
+  <h1>诊断</h1>
+  <div class="sub">验证 B 手机连通性与速度</div>
+
+  <div class="card">
+    <div class="lbl" style="margin-top:0">B 手机连通性</div>
+    <button class="btn" id="bTestClient">检测热点客户端</button>
+    <div id="testOut" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-top:0">测速</div>
+    <div class="grid2">
+      <button class="btn ghost" id="bSpeedProxied">走代理测速</button>
+      <button class="btn ghost" id="bSpeedDirect">直连测速</button>
+    </div>
+    <div id="speedOut" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-top:0">自定义连通性测试</div>
+    <input id="testUrl" placeholder="https://www.youtube.com" value="https://www.youtube.com">
+    <button class="btn ghost" id="bTestUrl" style="margin-top:10px">测试这个地址</button>
+    <div id="urlOut" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-top:0">日志</div>
+    <div class="grid2" style="margin-bottom:10px">
+      <button class="btn ghost" id="bLogGw">网关日志</button>
+      <button class="btn ghost" id="bLogMw">内核日志</button>
+    </div>
+    <pre id="logBox">点上面的按钮查看</pre>
+  </div>
+</div>
+
+<!-- ============ 底部导航 ============ -->
+<div class="tabs">
+  <button class="on" data-p="home">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    仪表盘</button>
+  <button data-p="node">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg>
+    节点</button>
+  <button data-p="set">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.33-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.33.22.68.24 1.05H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51.95z"/></svg>
+    设置</button>
+  <button data-p="diag">
+    <svg viewBox="0 0 24 24"><path d="M3 12h4l3 8l4-16l3 8h4"/></svg>
+    诊断</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+let seq = 0; const pend = {};
+window.__cb = (id, out) => { const f = pend[id]; if (f) { delete pend[id]; f(out); } };
+const run = cmd => new Promise(res => { const id = ++seq; pend[id] = res; Native.cmd(cmd, id); });
+const API = 'http://127.0.0.1:9095';
+const GW = '/data/adb/gateway';
+
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2000); }
+const kb = n => {
+  n = Math.max(0, n || 0);
+  if (n >= 1048576) return (n/1048576).toFixed(2) + ' MB';
+  if (n >= 1024) return (n/1024).toFixed(0) + ' KB';
+  return Math.round(n) + ' B';
+};
+
+/* ---------- 导航 ---------- */
+$$('.tabs button').forEach(b => b.onclick = () => {
+  $$('.tabs button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  $$('.page').forEach(p => p.classList.remove('on'));
+  $('#p-' + b.dataset.p).classList.add('on');
+  if (b.dataset.p === 'node') loadProxies();
+});
+
+/* ---------- 仪表盘 ---------- */
+let lastTraffic = {t: 0, up: 0, down: 0};
+
+async function refreshHome() {
+  const raw = await run(`sh ${GW}/status.sh 2>/dev/null`);
+  let d = {};
+  try { d = JSON.parse(raw.trim().split('\n').pop()); } catch (e) { return; }
+
+  const running = d.running === 1;
+  $('#hState').textContent = running ? '运行中' : '未运行';
+  $('#hBadge').className = 'badge ' + (running ? 'g' : 'r');
+  $('#hBadge').innerHTML = '<span class="dot"></span>' + (running ? '已连接' : '停止');
+  $('#bStart').disabled = running; $('#bStop').disabled = !running;
+
+  $('#hIf').textContent = d.iface || '未开热点';
+  $('#hNet').textContent = d.net || '—';
+  $('#hScope').textContent = d.scope || '—';
+
+  const ifs = d.ifaces || [];
+  $('#ifCount').textContent = ifs.length + ' 个';
+  $('#ifList').innerHTML = ifs.map(x =>
+    `<div class="row"><span class="k" style="font-family:ui-monospace,monospace;font-size:13px">${x.n}</span>
+     <span class="v" style="font-family:ui-monospace,monospace;font-size:13px">${x.ip}</span></div>`).join('');
+
+  const cli = d.assoc || [];
+  $('#cliCount').textContent = cli.length + ' 台';
+  $('#cliList').innerHTML = cli.length
+    ? cli.map(x => `<div class="row"><span class="k" style="font-family:ui-monospace,monospace;font-size:13px">${x.ip}</span>
+        <span class="v" style="font-size:11.5px;color:var(--dim2);font-weight:400">${x.mac}</span></div>`).join('')
+    : '<div class="row"><span class="k">暂无设备连接</span><span class="v"></span></div>';
+  $('#hConn').textContent = d.conns || 0;
+
+  const now = Date.now();
+  if (lastTraffic.t && running) {
+    const dt = Math.max(1, (now - lastTraffic.t) / 1000);
+    const du = Math.max(0, (d.up - lastTraffic.up) / dt);
+    const dd = Math.max(0, (d.down - lastTraffic.down) / dt);
+    $('#hUp').innerHTML = kb(du) + ' <span class="u">/s</span>';
+    $('#hDown').innerHTML = kb(dd) + ' <span class="u">/s</span>';
+  } else if (!running) {
+    $('#hUp').innerHTML = '0 <span class="u">/s</span>';
+    $('#hDown').innerHTML = '0 <span class="u">/s</span>';
+  }
+  lastTraffic = {t: now, up: d.up || 0, down: d.down || 0};
+}
+
+$('#bStart').onclick = async () => {
+  const scope = $('#segScope .on').dataset.v;
+  $('#bStart').disabled = true;
+  $('#bStart').innerHTML = '<span class="spin"></span> 启动中';
+  toast('正在启动，约 15 秒');
+  const out = await run(`sh ${GW}/gateway.sh start ${scope === 'all' ? '--all' : ''} 2>&1`);
+  $('#bStart').innerHTML = '启动网关';
+  toast(/✅/.test(out) ? '已启动' : '启动失败，已回滚');
+  refreshHome();
+};
+$('#bStop').onclick = async () => {
+  toast('正在清理规则');
+  await run(`sh ${GW}/panic.sh 2>&1`);
+  toast('已恢复默认网络');
+  refreshHome();
+};
+$('#bRestart').onclick = async () => {
+  const scope = $('#segScope .on').dataset.v;
+  toast('重启中');
+  await run(`sh ${GW}/gateway.sh restart ${scope === 'all' ? '--all' : ''} 2>&1`);
+  refreshHome();
+};
+
+/* ---------- 节点 ---------- */
+async function loadProxies() {
+  const raw = await run(`curl -s -m 4 ${API}/proxies 2>/dev/null`);
+  let d;
+  try { d = JSON.parse(raw); } catch (e) { $('#nodeList').innerHTML = '<div class="card">内核未运行或不可达</div>'; return; }
+  const groups = Object.values(d.proxies || {}).filter(p => p.all && p.all.length);
+  const g = groups[0];
+  if (!g) { $('#nodeList').innerHTML = '<div class="card">没有可用策略组</div>'; return; }
+  $('#nGroup').textContent = g.name;
+  $('#nNow').textContent = g.now || '—';
+
+  let html = '';
+  groups.forEach(grp => {
+    html += `<div class="pg"><h4><span>${esc(grp.name)}</span><span style="font-weight:600;color:var(--blue)">${esc(grp.now||'')}</span></h4>`;
+    grp.all.forEach(name => {
+      const p = d.proxies[name] || {};
+      const sel = name === grp.now;
+      const hist = p.history && p.history.length ? p.history[p.history.length-1].delay : null;
+      const lat = hist != null ? (hist > 0 ? hist + 'ms' : '超时') : '';
+      html += `<div class="node ${sel?'sel':''}" data-g="${esc(grp.name)}" data-n="${esc(name)}">
+        <span class="nm">${sel?'<span class="tick">✓ </span>':''}${esc(name)}</span>
+        <span class="lat" data-lat="${esc(name)}">${lat}</span></div>`;
+    });
+    html += '</div>';
+  });
+  $('#nodeList').innerHTML = html;
+
+  $$('.node').forEach(el => {
+    el.onclick = async () => {
+      const gname = el.dataset.g, nname = el.dataset.n;
+      el.style.opacity = .5;
+      await run(`curl -s -X PUT -m 5 '${API}/proxies/${encodeURIComponent(gname)}' -H 'Content-Type: application/json' -d '{"name":"${nname.replace(/'/g,'')}"}' 2>/dev/null`);
+      toast('已切换到 ' + nname);
+      loadProxies();
+    };
+  });
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+$('#bDelayAll').onclick = async () => {
+  toast('开始测延迟');
+  const names = $$('.lat').map(e => e.dataset.lat);
+  for (const n of names.slice(0, 40)) {
+    const el = $(`.lat[data-lat="${CSS.escape(n)}"]`);
+    if (el) el.innerHTML = '<span class="spin"></span>';
+    const r = await run(`curl -s -m 6 '${API}/proxies/${encodeURIComponent(n)}/delay?url=http%3A%2F%2Fwww.gstatic.com%2Fgenerate_204&timeout=5000' 2>/dev/null`);
+    let ms = '超时';
+    try { const j = JSON.parse(r); if (j.delay) ms = j.delay + 'ms'; } catch(e){}
+    if (el) el.textContent = ms;
+  }
+  toast('测速完成');
+};
+
+$('#bSub').onclick = async () => {
+  const url = $('#subUrl').value.trim();
+  if (!url) return toast('先填订阅地址');
+  toast('导入中…');
+  const res = await run(`sh ${GW}/import_sub.sh '${url.replace(/'/g,'')}' 2>&1`);
+  toast(/OK/.test(res) ? '订阅已导入' : '导入失败');
+  $('#subHint').textContent = res.slice(0, 300);
+};
+$('#bSubReload').onclick = loadProxies;
+$('#bReloadCfg').onclick = async () => { await run(`curl -s -X PUT -m 5 '${API}/configs?force=true' -d '{"path":"${GW}/config.yaml"}' 2>/dev/null`); toast('配置已重载'); loadProxies(); };
+
+/* ---------- 设置 ---------- */
+async function readSettings() {
+  const y = await run(`grep -E '^(mixed-port|tproxy-port|allow-lan|mode|log-level)' ${GW}/config.yaml 2>/dev/null; grep -E '^  listen' ${GW}/config.yaml 2>/dev/null | head -1`);
+  y.split('\n').forEach(l => {
+    let m;
+    if (m = l.match(/^mixed-port:\s*(\d+)/)) $('#setMixed').value = m[1];
+    if (m = l.match(/^tproxy-port:\s*(\d+)/)) $('#setTproxy').value = m[1];
+    if (m = l.match(/listen:\s*"[\d.]+:(\d+)"/)) $('#setDns').value = m[1];
+    if (m = l.match(/^log-level:\s*"?(\w+)"?/)) $('#setLog').value = m[1];
+    if (m = l.match(/^mode:\s*"?(\w+)"?/)) $('#setMode').value = m[1];
+    if (m = l.match(/^allow-lan:\s*(\w+)/)) $('#sLan').textContent = m[1] === 'true' ? '开启' : '关闭';
+  });
+  const cfg = await run(`grep -E '^PROXY_IPV6' ${GW}/tproxy.conf 2>/dev/null`);
+  $('#sV6').textContent = /PROXY_IPV6=1/.test(cfg) ? '开启' : (/=-1/.test(cfg) ? '禁用' : '关闭');
+}
+$('#bReadCfg').onclick = () => { readSettings(); toast('已读取'); };
+
+$('#bSave').onclick = async () => {
+  toast('保存中');
+  const y = await run(`cat ${GW}/config.yaml 2>/dev/null`);
+  if (!y || y.length < 100) return toast('读取配置失败');
+  let out = y
+    .replace(/^mixed-port:.*/m, 'mixed-port: ' + ($('#setMixed').value || 7891))
+    .replace(/^tproxy-port:.*/m, 'tproxy-port: ' + ($('#setTproxy').value || 7895))
+    .replace(/^mode:.*/m, 'mode: "' + $('#setMode').value + '"')
+    .replace(/^log-level:.*/m, 'log-level: "' + $('#setLog').value + '"')
+    .replace(/(\n\s*listen:\s*")[^"]*(")/, '$10.0.0.0:' + ($('#setDns').value || 5354) + '$2');
+  const r1 = await Native.saveLocal('newcfg.yaml', out);
+  await run(`cp /data/data/com.dsh.gateway/files/newcfg.yaml ${GW}/config.yaml && chmod 600 ${GW}/config.yaml`);
+  await run(`sh ${GW}/gateway.sh restart ${$('#segScope .on').dataset.v === 'all' ? '--all' : ''} 2>&1`);
+  toast('已保存并重启');
+  refreshHome();
+};
+$('#bPanic').onclick = async () => {
+  await run(`sh ${GW}/panic.sh 2>&1`);
+  toast('已清空规则');
+  refreshHome();
+};
+$('#segScope').onclick = e => {
+  if (e.target.dataset.v) {
+    $$('#segScope button').forEach(b => b.classList.remove('on'));
+    e.target.classList.add('on');
+  }
+};
+
+/* ---------- 诊断 ---------- */
+$('#bTestClient').onclick = async () => {
+  $('#testOut').innerHTML = '<span class="spin"></span> 检测中…';
+  const neigh = await run(`ip neigh show dev wlan2 2>/dev/null | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+ ' | grep lladdr`);
+  const conns = await run(`curl -s -m 4 ${API}/connections 2>/dev/null`);
+  const hosts = [];
+  try {
+    const d = JSON.parse(conns);
+    (d.connections||[]).forEach(c => {
+      const ip = c.metadata.sourceIP || '';
+      if (ip.startsWith('10.247.101.') || ip.startsWith('192.168.')) {
+        if (c.metadata.host) hosts.push(c.metadata.host);
+      }
+    });
+  } catch(e) {}
+  const devs = neigh.split('\n').filter(Boolean);
+  let h = `<div class="row"><span class="k">在线客户端</span><span class="v">${devs.length} 台</span></div>`;
+  devs.forEach(d => { const ip = d.split(' ')[0]; h += `<div class="row"><span class="k">${ip}</span><span class="v">${d.match(/..:..:..:..:..:../)||''}</span></div>`; });
+  h += `<div class="row"><span class="k">最近访问域名</span><span class="v">${hosts.length} 个</span></div>`;
+  [...new Set(hosts)].slice(0,6).forEach(x => h += `<div class="row"><span class="k" style="font-size:12px">${esc(x)}</span><span class="v"></span></div>`);
+  $('#testOut').innerHTML = hosts.length ? h : h + '<div class="hint">没看到热点网段的活跃连接，让 B 手机刷新一下网页再测。</div>';
+};
+
+async function speedTest(proxied) {
+  $('#speedOut').innerHTML = '<span class="spin"></span> 测速中（约 10 秒）…';
+  const p = proxied ? '-x http://127.0.0.1:7891' : '';
+  const r = await run(`curl -s -m 15 ${p} -o /dev/null -w '%{speed_download}|%{time_total}' 'https://speed.cloudflare.com/__down?bytes=10000000' 2>/dev/null`);
+  const [bps, t] = r.trim().split('|');
+  const mbps = (parseFloat(bps) * 8 / 1e6).toFixed(2);
+  $('#speedOut').innerHTML = `<div class="row"><span class="k">${proxied?'走代理':'直连'}</span>
+    <span class="v">${isNaN(mbps)?'失败':mbps+' Mbps'}</span></div>
+    <div class="row"><span class="k">耗时</span><span class="v">${t||'-'} s</span></div>`;
+}
+$('#bSpeedProxied').onclick = () => speedTest(true);
+$('#bSpeedDirect').onclick = () => speedTest(false);
+
+$('#bTestUrl').onclick = async () => {
+  const u = $('#testUrl').value.trim();
+  $('#urlOut').innerHTML = '<span class="spin"></span> 测试中…';
+  const r = await run(`curl -s -m 12 -x http://127.0.0.1:7891 -o /dev/null -w '%{http_code} %{time_total}s' '${u}' 2>&1`);
+  $('#urlOut').innerHTML = `<div class="row"><span class="k">结果</span><span class="v">${esc(r.trim())}</span></div>`;
+};
+
+$('#bLogGw').onclick = async () => { $('#logBox').textContent = await run(`tail -30 ${GW}/gateway.log 2>/dev/null`); };
+$('#bLogMw').onclick = async () => { $('#logBox').textContent = await run(`tail -30 ${GW}/run.log 2>/dev/null`); };
+
+/* ---------- 启动 ---------- */
+window.onload = () => {
+  refreshHome();
+  readSettings();
+  setInterval(() => { if ($('#p-home').classList.contains('on')) refreshHome(); }, 4000);
+};
+</script>
+</body>
+</html>

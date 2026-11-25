@@ -1,0 +1,14 @@
+app/sdk/
+app/build/
+app/gw.keystore
+*.apk
+*.log
+*.zip
+*.gz
+mihomo
+src.yaml
+gw.yaml
+config.yaml
+*.yaml.bak*
+import_sub_tmp*
+app/*.idsig
