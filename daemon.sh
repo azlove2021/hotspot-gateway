@@ -22,6 +22,7 @@ fi
 echo $$ > "$PIDFILE"
 log "daemon 启动 pid=$$"
 
+TICK=0
 LAST_SEQ=$(cat "$APPD/seq" 2>/dev/null)
 case "$LAST_SEQ" in ''|*[!0-9]*) LAST_SEQ=0 ;; esac
 
@@ -46,6 +47,12 @@ while true; do
         log "seq=$SEQ cmd=$(printf '%s' "$CMD" | head -c 60)"
       fi
     fi
+  fi
+
+  # ---------- 订阅定时更新（每 60 秒检查一次是否到期）----------
+  TICK=$((TICK + 1))
+  if [ $((TICK % 60)) -eq 0 ] && [ -x "$D/sub_manager.sh" ]; then
+    sh $D/sub_manager.sh check >> $LOG 2>&1
   fi
 
   # ---------- 心跳看护：App 关了就把网络恢复 ----------
