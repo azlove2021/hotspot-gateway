@@ -38,6 +38,13 @@ public class MainActivity extends Activity {
         s.setAllowFileAccess(true);
         s.setCacheMode(WebSettings.LOAD_NO_CACHE);
         web.setWebViewClient(new WebViewClient());
+        web.setWebChromeClient(new android.webkit.WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(android.webkit.ConsoleMessage cm) {
+                android.util.Log.e("GWJS", cm.message() + " @" + cm.lineNumber() + ":" + cm.sourceId());
+                return true;
+            }
+        });
         web.addJavascriptInterface(new Bridge(), "Native");
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         setContentView(web);

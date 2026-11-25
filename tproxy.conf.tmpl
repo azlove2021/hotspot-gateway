@@ -18,8 +18,11 @@ WIFI_INTERFACE="wlan0"
 HOTSPOT_INTERFACE="AUTO"     # 运行时由 gateway.sh 自动替换为真实接口名
 HOTSPOT_SUBNET_IPV4="AUTO"   # 同上
 
-PROXY_IPV6=1                 # IPv6 也走代理（内核支持 ip6tables TPROXY），不禁用 v6 栈
+PROXY_IPV6=0                 # 热点无 IPv6 出口，不代理也不禁用（省一堆 ip6tables 规则）
 BLOCK_QUIC=0
 BYPASS_CN_IP=0               # 本机内核无 ipset，关闭
 MAC_FILTER_ENABLE=0
 PERFORMANCE_MODE=1
+
+# 只保留必要的内网/保留网段，减少 iptables 规则数量（启动更快）
+BYPASS_IPv4_LIST="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 224.0.0.0/4 255.255.255.255/32"

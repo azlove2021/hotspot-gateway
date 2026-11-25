@@ -46,16 +46,15 @@ gen_conf(){
   fi
 }
 
-selfcheck(){   # 返回 0=健康 1=国内不通 2=本机被代理但境外不通
+selfcheck(){   # 0=健康 1=国内不通 2=本机被代理但境外不通
   ok_cn=0; ok_out=0
-  i=0
-  while [ $i -lt 3 ]; do
-    c=$(curl -s -m 6 -o /dev/null -w '%{http_code}' http://www.baidu.com 2>/dev/null)
+  for i in 1 2; do
+    c=$(curl -s -m 3 -o /dev/null -w '%{http_code}' http://www.baidu.com 2>/dev/null)
     case "$c" in 200|301|302) ok_cn=1;; esac
-    c2=$(curl -s -m 8 -o /dev/null -w '%{http_code}' https://www.gstatic.com/generate_204 2>/dev/null)
+    c2=$(curl -s -m 4 -o /dev/null -w '%{http_code}' https://www.gstatic.com/generate_204 2>/dev/null)
     [ "$c2" = "204" ] && ok_out=1
     [ $ok_cn -eq 1 ] && [ $ok_out -eq 1 ] && break
-    i=$((i + 1)); sleep 2
+    [ $i -eq 1 ] && sleep 1
   done
   log "自检: 国内=$ok_cn 境外=$ok_out"
   [ $ok_cn -eq 1 ] || return 1
@@ -66,13 +65,14 @@ selfcheck(){   # 返回 0=健康 1=国内不通 2=本机被代理但境外不通
 start(){
   MODE="$1"
   log "=== start ($MODE) ==="
-  # 先冻结旧守护，避免与本次启动抢规则
+  # 冻结旧守护；只有存在残留规则时才做全量清理（省 4 秒）
   touch $DIR/stopping
   pkill -f "$DIR/watchdog.sh" 2>/dev/null
-  sleep 1
-  sh $DIR/panic.sh >/dev/null 2>&1
+  pkill -x mihomo 2>/dev/null
+  if iptables -t mangle -L PROXY_PREROUTING -n >/dev/null 2>&1 || ip rule show 2>/dev/null | grep -q 2025; then
+    sh $DIR/panic.sh >/dev/null 2>&1
+  fi
   rm -f $DIR/stopping
-  sleep 1
 
   # 1) 生成配置
   gen_conf "$MODE"
@@ -81,9 +81,10 @@ start(){
   cd $DIR
   (setsid ./mihomo -d $DIR >> $DIR/run.log 2>&1 </dev/null &)
   i=0
-  while [ $i -lt 15 ]; do
+  while [ $i -lt 60 ]; do
     ss -tln 2>/dev/null | grep -q ':7895' && break
-    i=$((i + 1)); sleep 1
+    i=$((i + 1))
+    usleep 150000 2>/dev/null || sleep 1
   done
   if ! ss -tln 2>/dev/null | grep -q ':7895'; then
     log "核心未就绪，放弃（未改任何规则）"

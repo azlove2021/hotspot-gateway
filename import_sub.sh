@@ -47,5 +47,13 @@ awk -v newfile="$NEW" '
 
 chmod 600 "$CFG"
 CNT=$(grep -c "^  - {name:" "$CFG" 2>/dev/null || grep -c "^  - name:" "$CFG" 2>/dev/null)
-echo "OK 已导入，配置中节点关键词条数: $CNT"
+echo "已替换 proxies 段，节点条目: $CNT"
+
+# 关键：重建策略组，否则旧组引用不到新节点名会导致整个配置解析失败
+if [ -x "$D/rebuild_groups.sh" ]; then
+  sh "$D/rebuild_groups.sh"
+  echo "OK 导入完成，策略组已重建"
+else
+  echo "警告：rebuild_groups.sh 不存在，策略组可能引用失效"
+fi
 echo "重启网关生效：gateway.sh restart"

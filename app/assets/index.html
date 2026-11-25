@@ -102,6 +102,26 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
   color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;z-index:99;opacity:0;
   transition:opacity .2s;pointer-events:none;max-width:86%}
 .toast.on{opacity:1}
+
+/* 白蓝主题（FlClash 风格）：data-theme=light 强制浅色 */
+[data-theme="light"]{
+  --bg:#f5f7fb; --card:#ffffff; --card2:#f8fafc; --line:#e9edf4; --txt:#0f172a;
+  --dim:#64748b; --dim2:#94a3b8; --blue:#2563eb; --blue-soft:#eff4ff;
+  --green:#10b981; --green-soft:#e8fbf3; --red:#ef4444; --red-soft:#fdeeee;
+  --amber:#d97706; --amber-soft:#fef6e7;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 10px 30px -14px rgba(37,99,235,.18);
+}
+[data-theme="dark"]{
+  --bg:#0d1117; --card:#161b22; --card2:#1a2029; --line:#232a35; --txt:#e6edf3;
+  --dim:#8b949e; --dim2:#6e7681; --blue:#4493f8; --blue-soft:#13233c;
+  --green:#3fb950; --green-soft:#12281a; --red:#f85149; --red-soft:#2b1414;
+  --amber:#d29922; --amber-soft:#2a2213;
+}
+[data-theme="light"] .hero{background:linear-gradient(135deg,#2563eb,#3b82f6 55%,#60a5fa)}
+[data-theme="light"] .tabs{background:rgba(255,255,255,.88)}
+[data-theme="light"] .node.sel{background:#eff4ff}
+[data-theme="light"] input,[data-theme="light"] select{background:#f8fafc}
+
 </style>
 </head>
 <body>
@@ -171,8 +191,20 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
     <div class="row"><span class="k">当前节点</span><span class="v" id="nNow">—</span></div>
   </div>
 
+  <div class="card">
+    <div class="lbl" style="margin-top:0">测延迟使用的地址</div>
+    <select id="urlSel">
+      <option value="https://www.gstatic.com/generate_204">gstatic（推荐，全球可用）</option>
+      <option value="https://cp.cloudflare.com/generate_204">cloudflare</option>
+      <option value="https://www.google.com/generate_204">google</option>
+      <option value="https://github.com/robots.txt">github</option>
+      <option value="http://www.youtube.com/generate_204">youtube</option>
+      <option value="https://www.baidu.com">百度（国内对照）</option>
+    </select>
+  </div>
+
   <div class="grid2" style="margin-bottom:12px">
-    <button class="btn ghost" id="bDelayAll">全部测延迟</button>
+    <button class="btn ghost" id="bDelayAll">测当前组延迟</button>
     <button class="btn ghost" id="bReloadCfg">重载配置</button>
   </div>
 
@@ -186,6 +218,14 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
 
   <div class="card">
     <div class="lbl" style="margin-top:0">代理范围</div>
+    <div class="lbl" style="margin-top:0">外观</div>
+    <div class="seg" id="segTheme">
+      <button data-t="light" class="on">白蓝</button>
+      <button data-t="dark">深色</button>
+      <button data-t="auto">跟随系统</button>
+    </div>
+
+    <div class="lbl">代理范围</div>
     <div class="seg" id="segScope">
       <button data-v="hotspot" class="on">只代理热点</button>
       <button data-v="all">本机也走代理</button>
@@ -287,11 +327,26 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
 <div class="toast" id="toast"></div>
 
 <script>
-const $ = s => document.querySelector(s);
+window.onerror = function (m, src, line) {
+  try { document.getElementById('logBox').textContent = 'JS ERROR: ' + m + ' @' + line; } catch (e) {}
+};
+const _noopTarget = function () {};
+const _noop = new Proxy(_noopTarget, {
+  get: (t, k) => {
+    if (k === 'classList') return { add() {}, remove() {}, toggle() {}, contains: () => false };
+    if (k === 'style') return {};
+    if (k === 'dataset') return {};
+    return _noop;
+  },
+  set: () => true,
+  apply: () => _noop
+});
+const $ = s => document.querySelector(s) || _noop;
 const $$ = s => [...document.querySelectorAll(s)];
 let seq = 0; const pend = {};
 window.__cb = (id, out) => { const f = pend[id]; if (f) { delete pend[id]; f(out); } };
 const run = cmd => new Promise(res => { const id = ++seq; pend[id] = res; Native.cmd(cmd, id); });
+const bind = (sel, ev, fn) => { const el = $(sel); if (el) el[ev] = fn; };
 const API = 'http://127.0.0.1:9095';
 const GW = '/data/adb/gateway';
 
@@ -363,12 +418,22 @@ $('#bStart').onclick = async () => {
   const scope = $('#segScope .on').dataset.v;
   $('#bStart').disabled = true;
   $('#bStart').innerHTML = '<span class="spin"></span> 启动中';
-  toast('正在启动，约 15 秒');
-  const out = await run(`sh ${GW}/gateway.sh start ${scope === 'all' ? '--all' : ''} 2>&1`);
+  toast('正在启动（约 5 秒）');
+  run(`(setsid sh ${GW}/gateway.sh start ${scope === 'all' ? '--all' : ''} >/dev/null 2>&1 &); echo bg`);
+  let ok = false;
+  for (let i = 0; i < 15; i++) {
+    await new Promise(r => setTimeout(r, 700));
+    const raw = await run(`sh ${GW}/status.sh 2>/dev/null`);
+    try {
+      const d = JSON.parse(raw.trim().split('\n').pop());
+      if (d.running === 1) { ok = true; break; }
+    } catch (e) {}
+  }
   $('#bStart').innerHTML = '启动网关';
-  toast(/✅/.test(out) ? '已启动' : '启动失败，已回滚');
+  toast(ok ? '✅ 已启动' : '启动较慢，稍后自动刷新');
   refreshHome();
 };
+
 $('#bStop').onclick = async () => {
   toast('正在清理规则');
   await run(`sh ${GW}/panic.sh 2>&1`);
@@ -384,55 +449,86 @@ $('#bRestart').onclick = async () => {
 
 /* ---------- 节点 ---------- */
 async function loadProxies() {
-  const raw = await run(`curl -s -m 4 ${API}/proxies 2>/dev/null`);
+  const raw = await run(`curl -s -m 5 ${API}/proxies 2>/dev/null`);
   let d;
-  try { d = JSON.parse(raw); } catch (e) { $('#nodeList').innerHTML = '<div class="card">内核未运行或不可达</div>'; return; }
-  const groups = Object.values(d.proxies || {}).filter(p => p.all && p.all.length);
-  const g = groups[0];
-  if (!g) { $('#nodeList').innerHTML = '<div class="card">没有可用策略组</div>'; return; }
-  $('#nGroup').textContent = g.name;
-  $('#nNow').textContent = g.now || '—';
+  try { d = JSON.parse(raw); } catch (e) {
+    $('#nodeList').innerHTML = '<div class="card">内核未运行或不可达</div>'; return;
+  }
+  const all = d.proxies || {};
+  let groups = Object.values(all).filter(p => p.all && p.all.length);
+
+  // 主组优先
+  const order = n => n === '节点选择' ? 0 : n === '自动选择' ? 1 : 2;
+  groups.sort((a, b) => order(a.name) - order(b.name));
+
+  const main = groups[0];
+  $('#nGroup').textContent = main ? main.name : '—';
+  $('#nNow').textContent = main ? (main.now || '—') : '—';
 
   let html = '';
-  groups.forEach(grp => {
-    html += `<div class="pg"><h4><span>${esc(grp.name)}</span><span style="font-weight:600;color:var(--blue)">${esc(grp.now||'')}</span></h4>`;
+  groups.forEach((grp, idx) => {
+    const open = idx < 2;
+    const p = all[grp.now] || {};
+    const nowDelay = (p.history && p.history.length) ? p.history[p.history.length - 1].delay : null;
+    const nowTxt = nowDelay != null ? (nowDelay > 0 ? nowDelay + ' ms' : '超时') : '';
+    html += `<div class="pg">
+      <h4 data-g="${esc(grp.name)}" class="gh">
+        <span>${esc(grp.name)} <span style="color:var(--dim2);font-size:11px">${grp.all.length}</span></span>
+        <span style="color:var(--blue);font-weight:600">${esc(grp.now || '')} ${nowTxt ? '· ' + nowTxt : ''}</span>
+      </h4>
+      <div class="gb" style="${open ? '' : 'display:none'}">`;
+
     grp.all.forEach(name => {
-      const p = d.proxies[name] || {};
+      const pr = all[name] || {};
       const sel = name === grp.now;
-      const hist = p.history && p.history.length ? p.history[p.history.length-1].delay : null;
-      const lat = hist != null ? (hist > 0 ? hist + 'ms' : '超时') : '';
-      html += `<div class="node ${sel?'sel':''}" data-g="${esc(grp.name)}" data-n="${esc(name)}">
-        <span class="nm">${sel?'<span class="tick">✓ </span>':''}${esc(name)}</span>
-        <span class="lat" data-lat="${esc(name)}">${lat}</span></div>`;
+      const hist = pr.history && pr.history.length ? pr.history[pr.history.length - 1].delay : null;
+      const lat = hist != null ? (hist > 0 ? hist + ' ms' : '超时') : '';
+      const isGroup = !!(pr.all && pr.all.length);
+      html += `<div class="node ${sel ? 'sel' : ''}" data-g="${esc(grp.name)}" data-n="${esc(name)}">
+        <span class="nm">${sel ? '<span class="tick">✓ </span>' : ''}${esc(name)}${isGroup ? ' <span style="color:var(--dim2);font-size:11px">组</span>' : ''}</span>
+        <span class="lat" data-lat="${esc(name)}">${lat}</span>
+      </div>`;
     });
-    html += '</div>';
+    html += '</div></div>';
   });
   $('#nodeList').innerHTML = html;
 
+  // 折叠
+  $$('.gh').forEach(h => h.onclick = () => {
+    const b = h.nextElementSibling;
+    b.style.display = b.style.display === 'none' ? '' : 'none';
+  });
+
+  // 切换
   $$('.node').forEach(el => {
     el.onclick = async () => {
       const gname = el.dataset.g, nname = el.dataset.n;
       el.style.opacity = .5;
-      await run(`curl -s -X PUT -m 5 '${API}/proxies/${encodeURIComponent(gname)}' -H 'Content-Type: application/json' -d '{"name":"${nname.replace(/'/g,'')}"}' 2>/dev/null`);
-      toast('已切换到 ' + nname);
+      await run(`curl -s -X PUT -m 5 '${API}/proxies/${encodeURIComponent(gname)}' -H 'Content-Type: application/json' -d '{"name":"${nname.replace(/'/g, '')}"}' 2>/dev/null`);
+      toast('已切到 ' + nname);
       loadProxies();
     };
   });
 }
+
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 $('#bDelayAll').onclick = async () => {
+  const url = $('#urlSel').value;
+  const enc = encodeURIComponent(url);
   toast('开始测延迟');
   const names = $$('.lat').map(e => e.dataset.lat);
-  for (const n of names.slice(0, 40)) {
-    const el = $(`.lat[data-lat="${CSS.escape(n)}"]`);
+  let n = 0;
+  for (const name of names.slice(0, 60)) {
+    const el = $(`.lat[data-lat="${CSS.escape(name)}"]`);
     if (el) el.innerHTML = '<span class="spin"></span>';
-    const r = await run(`curl -s -m 6 '${API}/proxies/${encodeURIComponent(n)}/delay?url=http%3A%2F%2Fwww.gstatic.com%2Fgenerate_204&timeout=5000' 2>/dev/null`);
+    const r = await run(`curl -s -m 7 '${API}/proxies/${encodeURIComponent(name)}/delay?url=${enc}&timeout=5000' 2>/dev/null`);
     let ms = '超时';
-    try { const j = JSON.parse(r); if (j.delay) ms = j.delay + 'ms'; } catch(e){}
+    try { const j = JSON.parse(r); if (j.delay) ms = j.delay + ' ms'; } catch (e) {}
     if (el) el.textContent = ms;
+    n++;
   }
-  toast('测速完成');
+  toast(`测完 ${n} 个节点`);
 };
 
 $('#bSub').onclick = async () => {
@@ -483,6 +579,9 @@ $('#bPanic').onclick = async () => {
   await run(`sh ${GW}/panic.sh 2>&1`);
   toast('已清空规则');
   refreshHome();
+};
+$('#segTheme').onclick = e => {
+  if (e.target.dataset.t) applyTheme(e.target.dataset.t);
 };
 $('#segScope').onclick = e => {
   if (e.target.dataset.v) {
@@ -537,8 +636,25 @@ $('#bTestUrl').onclick = async () => {
 $('#bLogGw').onclick = async () => { $('#logBox').textContent = await run(`tail -30 ${GW}/gateway.log 2>/dev/null`); };
 $('#bLogMw').onclick = async () => { $('#logBox').textContent = await run(`tail -30 ${GW}/run.log 2>/dev/null`); };
 
+
+/* ---------- 主题 ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+const THEMES = { light: '', dark: 'dark', auto: 'auto' };
+function applyTheme(t) {
+  const root = document.documentElement;
+  if (t === 'light') { root.setAttribute('data-theme', 'light'); }
+  else if (t === 'dark') { root.setAttribute('data-theme', 'dark'); }
+  else { root.removeAttribute('data-theme'); }
+  store.set('gw_theme', t);
+  $$('#segTheme button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+}
+
 /* ---------- 启动 ---------- */
 window.onload = () => {
+  try { applyTheme(store.get('gw_theme', 'light')); } catch (e) {}
   refreshHome();
   readSettings();
   setInterval(() => { if ($('#p-home').classList.contains('on')) refreshHome(); }, 4000);
