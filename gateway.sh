@@ -46,17 +46,29 @@ gen_conf(){
   fi
 }
 
-selfcheck(){   # 0=健康 1=国内不通 2=本机被代理但境外不通
+selfcheck(){   # 0=健康 1=整体不通 2=本机被代理但境外不通
   ok_cn=0; ok_out=0
-  for i in 1 2; do
-    c=$(curl -s -m 3 -o /dev/null -w '%{http_code}' http://www.baidu.com 2>/dev/null)
+  for i in 1 2 3; do
+    c=$(curl -s -m 4 -o /dev/null -w '%{http_code}' http://www.baidu.com 2>/dev/null)
     case "$c" in 200|301|302) ok_cn=1;; esac
-    c2=$(curl -s -m 4 -o /dev/null -w '%{http_code}' https://www.gstatic.com/generate_204 2>/dev/null)
-    [ "$c2" = "204" ] && ok_out=1
-    [ $ok_cn -eq 1 ] && [ $ok_out -eq 1 ] && break
-    [ $i -eq 1 ] && sleep 1
+    if [ -z "$c" ] || [ "$c" = "000" ]; then
+      c2=$(curl -s -m 5 -o /dev/null -w '%{http_code}' https://www.gstatic.com/generate_204 2>/dev/null)
+      [ "$c2" = "204" ] && ok_out=1
+    else
+      c2=$(curl -s -m 5 -o /dev/null -w '%{http_code}' https://www.gstatic.com/generate_204 2>/dev/null)
+      [ "$c2" = "204" ] && ok_out=1
+    fi
+    # 两路都通直接结束；国内通就够了
+    [ $ok_cn -eq 1 ] && break
+    [ $i -lt 3 ] && sleep 2
   done
   log "自检: 国内=$ok_cn 境外=$ok_out"
+
+  # 国内不通但境外通 → 链路是好的，只是国内探测点抖动，不当作故障
+  if [ $ok_cn -eq 0 ] && [ $ok_out -eq 1 ]; then
+    log "国内探测失败但境外可达，判定为抖动，不回滚"
+    return 0
+  fi
   [ $ok_cn -eq 1 ] || return 1
   [ "$MODE_ALL" = "all" ] && [ $ok_out -eq 0 ] && return 2
   return 0

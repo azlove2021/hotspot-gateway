@@ -43,8 +43,19 @@ do_update() {
   CNT=$(echo "$OUT" | grep -oE '节点 [0-9]+ 个' | grep -oE '[0-9]+' | head -1)
   [ -z "$CNT" ] && CNT=0
   save "$SUB_URL" "$SUB_NAME" "$SUB_INTERVAL" "$CNT"
-  sh $D/gateway.sh restart >/dev/null 2>&1
-  echo "OK|已更新，节点 $CNT 个"
+  # 优先热重载（不中断连接、不重启进程）；失败才退回重启
+  CODE=$(curl -s -o /dev/null -w '%{http_code}' -X PUT -m 8 \
+    -H "Content-Type: application/json" \
+    -d "{\"path\":\"$D/config.yaml\"}" \
+    "http://127.0.0.1:9095/configs?force=true" 2>/dev/null)
+  case "$CODE" in
+    200|204) echo "OK|已更新，节点 $CNT 个（热重载）" ;;
+    *)
+      echo "热重载失败($CODE)，改为重启"
+      sh $D/gateway.sh restart >/dev/null 2>&1
+      echo "OK|已更新，节点 $CNT 个（重启）"
+      ;;
+  esac
 }
 
 cmd="$1"
