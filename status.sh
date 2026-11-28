@@ -44,6 +44,17 @@ if [ -n "$IF" ]; then
   }')
 fi
 
+# 启动阶段（gateway.sh 写入）
+STAGE=""; SMSG=""; SEXIP=""
+if [ -f "$D/startup.state" ]; then
+  STAGE=$(grep -oE '^STAGE=.*' "$D/startup.state" 2>/dev/null | cut -d= -f2-)
+  SMSG=$(grep -oE '^MSG=.*' "$D/startup.state" 2>/dev/null | cut -d= -f2-)
+  SEXIP=$(grep -oE '^EXIT_IP=.*' "$D/startup.state" 2>/dev/null | cut -d= -f2-)
+fi
+
+V6G="ON"
+grep -qx "OFF" "$D/v6guard.conf" 2>/dev/null && V6G="OFF"
+
 SCOPE="仅热点"
 grep -qE '^PROXY_WIFI=1' $D/tproxy.conf 2>/dev/null && SCOPE="本机 + 热点"
 
@@ -73,5 +84,5 @@ fi
 [ -z "$DOWN" ] && DOWN=0
 [ -z "$CONNS" ] && CONNS=0
 
-printf '{"running":%s,"iface":"%s","net":"%s","ipv6":"%s","ipv6addr":"%s","clients":%s,"scope":"%s","up":%s,"down":%s,"conns":%s,"ifaces":[%s],"assoc":[%s],"hosts":[%s]}\n' \
-  "$RUN" "$IF" "$NET" "$V6S" "$V6A" "$CLIENTS" "$SCOPE" "$UP" "$DOWN" "$CONNS" "$IFJ" "$CLJ" "$HOSTS"
+printf '{"running":%s,"iface":"%s","net":"%s","ipv6":"%s","ipv6addr":"%s","clients":%s,"scope":"%s","up":%s,"down":%s,"conns":%s,"stage":"%s","msg":"%s","exitip":"%s","v6guard":"%s","ifaces":[%s],"assoc":[%s],"hosts":[%s]}\n' \
+  "$RUN" "$IF" "$NET" "$V6S" "$V6A" "$CLIENTS" "$SCOPE" "$UP" "$DOWN" "$CONNS" "$STAGE" "$SMSG" "$SEXIP" "$V6G" "$IFJ" "$CLJ" "$HOSTS"

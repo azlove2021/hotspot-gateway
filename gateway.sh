@@ -12,6 +12,16 @@ TPL=$DIR/tproxy.conf.tmpl
 LOG=$DIR/gateway.log
 log(){ printf '[%s] %s\n' "$(date '+%F %T')" "$*" >> $LOG; }
 
+# 启动阶段：供 App 轮询显示进度与最终结果
+set_stage(){
+  {
+    echo "STAGE=$1"
+    echo "MSG=$2"
+    echo "TS=$(date +%s)"
+    [ -n "$3" ] && echo "EXIT_IP=$3"
+  } > $DIR/startup.state 2>/dev/null
+}
+
 detect_hotspot(){
   for ifc in ap0 ap1 wlan1 wlan2 swlan0 softap0; do
     if ip -4 addr show dev "$ifc" 2>/dev/null | grep -q 'inet '; then
@@ -87,9 +97,11 @@ start(){
   rm -f $DIR/stopping
 
   # 1) 生成配置
+  set_stage starting "准备配置"
   gen_conf "$MODE"
 
   # 2) 启动核心并等端口
+  set_stage starting "启动代理内核"
   cd $DIR
   (setsid ./mihomo -d $DIR >> $DIR/run.log 2>&1 </dev/null &)
   i=0
@@ -101,12 +113,14 @@ start(){
   if ! ss -tln 2>/dev/null | grep -q ':7895'; then
     log "核心未就绪，放弃（未改任何规则）"
     pkill -x mihomo 2>/dev/null
+    set_stage failed "代理内核启动失败（端口未就绪）"
     echo "❌ mihomo 启动失败，网络未做任何改动"
     return 1
   fi
   log "mihomo 就绪 pid=$(pgrep -x mihomo)"
 
   # 3) 应用 TPROXY 规则
+  set_stage rules "应用分流规则（约 5 秒）"
   sh $TP -d $DIR start >> $LOG 2>&1
 
   # 3.5) 热点客户端 DNS 劫持：mangle 主链放行 53，nat 转给 mihomo DNS
@@ -134,23 +148,45 @@ start(){
   fi
 
   # 4) 自检 + 失败自动回滚
+  set_stage checking "验证国内连通性"
   MODE_ALL="$MODE"
   selfcheck
   rc=$?
   if [ $rc -eq 1 ]; then
     log "国内网络不通 → 回滚"
     sh $DIR/panic.sh >/dev/null 2>&1
+    set_stage failed "自检失败：国内网络不通，已回滚"
     echo "❌ 自检失败（国内不通），已自动回滚，网络已恢复"
     return 2
   fi
   if [ $rc -eq 2 ]; then
     log "境外不通 → 回滚"
     sh $DIR/panic.sh >/dev/null 2>&1
+    set_stage failed "自检失败：节点不通，已回滚"
     echo "❌ 自检失败（节点不通），已自动回滚，网络已恢复"
     return 2
   fi
 
   touch $DIR/heartbeat_watch
+
+  # 4.5) 验证代理出口（给 App 一个明确的“是否生效”结论）
+  set_stage checking "测试代理出口"
+  EXIP=""
+  for i in 1 2 3; do
+    EXIP=$(curl -s -m 8 -x "http://127.0.0.1:7891" https://api.ipify.org 2>/dev/null | tr -d '\r\n')
+    [ -n "$EXIP" ] && break
+    sleep 2
+  done
+  if [ -n "$EXIP" ]; then
+    log "代理出口: $EXIP"
+    set_stage ready "代理已生效" "$EXIP"
+  else
+    log "代理出口验证失败（规则已应用，但出口未通）"
+    set_stage ready "已启动，但出口未验证（节点可能不稳）"
+  fi
+
+  # 记住"应该处于运行状态"，供 daemon 自愈与开机恢复使用
+  echo "running" > $DIR/last_state
 
   # 5) 守护
   (setsid sh $DIR/watchdog.sh >> $LOG 2>&1 </dev/null &)

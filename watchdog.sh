@@ -16,7 +16,7 @@ while true; do
   # 核心进程
   if ! pgrep -x mihomo >/dev/null 2>&1; then
     wlog "mihomo 进程消失 → 自动恢复"
-    sh $D/panic.sh >> $LOG 2>&1
+    sh $D/panic.sh keep >> $LOG 2>&1
     exit 0
   fi
 

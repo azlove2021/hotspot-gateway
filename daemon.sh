@@ -23,6 +23,12 @@ echo $$ > "$PIDFILE"
 log "daemon 启动 pid=$$"
 
 TICK=0
+
+# 开机/重启恢复：上次是运行状态就自动把网关拉起来（等热点就绪）
+if [ "$(cat "$D/last_state" 2>/dev/null)" = "running" ] && ! pgrep -x mihomo >/dev/null 2>&1; then
+  log "上次为运行状态，10 秒后自动恢复网关"
+  ( sleep 10; sh "$D/gateway.sh" start >/dev/null 2>&1 ) &
+fi
 LAST_SEQ=$(cat "$APPD/seq" 2>/dev/null)
 case "$LAST_SEQ" in ''|*[!0-9]*) LAST_SEQ=0 ;; esac
 
@@ -49,8 +55,14 @@ while true; do
     fi
   fi
 
+  # ---------- 自愈：应运行但内核没了（崩溃/被系统杀）----------
+  if [ $((TICK % 30)) -eq 0 ] && [ "$(cat "$D/last_state" 2>/dev/null)" = "running" ] && ! pgrep -x mihomo >/dev/null 2>&1; then
+    log "检测到内核未运行（应运行），自动重启网关"
+    ( sh "$D/gateway.sh" start >/dev/null 2>&1 ) &
+  fi
+
   # ---------- 热点 IPv6 守卫（每 10 秒；系统重开热点会恢复 IPv6）----------
-  if [ $((TICK % 10)) -eq 0 ] && [ -x "$D/hotspot_v6guard.sh" ]; then
+  if [ $((TICK % 3)) -eq 0 ] && [ -x "$D/hotspot_v6guard.sh" ]; then
     sh $D/hotspot_v6guard.sh 2>/dev/null
   fi
 
@@ -66,7 +78,8 @@ while true; do
       MT=$(stat -c %Y "$HB" 2>/dev/null)
       case "$MT" in ''|*[!0-9]*) MT=0 ;; esac
       AGE=$(( $(date +%s) - MT ))
-      if [ "$AGE" -gt 90 ]; then
+      # 30 分钟没心跳才恢复（原来 90 秒太激进：切后台/锁屏就会误杀）
+      if [ "$AGE" -gt 1800 ]; then
         log "心跳超时 ${AGE}s → 恢复默认网络"
         sh $D/panic.sh >> $LOG 2>&1
       fi

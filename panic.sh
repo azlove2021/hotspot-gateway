@@ -57,5 +57,14 @@ rm -f $D/heartbeat_watch
 pkill -x mihomo 2>/dev/null
 pkill -f "$D/watchdog.sh" 2>/dev/null
 
+KEEP_STATE="$1"
+[ "$KEEP_STATE" != "keep" ] && echo "stopped" > /data/adb/gateway/last_state 2>/dev/null
+
+{
+  echo "STAGE=stopped"
+  echo "MSG=已停止，规则已清空"
+  echo "TS=$(date +%s)"
+} > /data/adb/gateway/startup.state 2>/dev/null
+
 log "panic: 已清空规则并恢复网络"
 echo "网络已恢复：mangle 表已清空、策略路由已删除、mihomo 已停止"

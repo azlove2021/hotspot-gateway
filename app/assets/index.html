@@ -183,6 +183,7 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
   <div class="card tight">
     <div class="row"><span class="k">热点接口</span><span class="v" id="hIf">—</span></div>
     <div class="row"><span class="k">热点网段</span><span class="v" id="hNet">—</span></div>
+    <div class="row"><span class="k">代理出口</span><span class="v" id="hExit">—</span></div>
     <div class="row"><span class="k">代理范围</span><span class="v" id="hScope">—</span></div>
   </div>
 
@@ -599,10 +600,31 @@ async function refreshHome() {
   try { d = JSON.parse(raw.trim().split('\n').pop()); } catch (e) { return; }
 
   const running = d.running === 1;
-  $('#hState').textContent = running ? '运行中' : '未运行';
-  $('#hBadge').className = 'badge ' + (running ? 'g' : 'r');
-  $('#hBadge').innerHTML = '<span class="dot"></span>' + (running ? '已连接' : '停止');
-  $('#bStart').disabled = running; $('#bStop').disabled = !running;
+  const stage = d.stage || '';
+  const starting = ['starting', 'rules', 'checking'].includes(stage);
+
+  if (starting) {
+    $('#hState').innerHTML = '<span class="spin" style="width:16px;height:16px;border-width:2.5px"></span> 启动中';
+    $('#hBadge').className = 'badge b';
+    $('#hBadge').innerHTML = '<span class="dot"></span>' + (d.msg || '准备中');
+  } else if (stage === 'failed') {
+    $('#hState').textContent = '启动失败';
+    $('#hBadge').className = 'badge r';
+    $('#hBadge').innerHTML = '<span class="dot"></span>' + (d.msg || '已回滚').slice(0, 20);
+  } else if (running) {
+    $('#hState').textContent = d.exitip ? '代理已生效' : '运行中';
+    $('#hBadge').className = 'badge g';
+    $('#hBadge').innerHTML = '<span class="dot"></span>' + (d.exitip ? '已连接' : '规则已应用');
+  } else {
+    $('#hState').textContent = '未运行';
+    $('#hBadge').className = 'badge r';
+    $('#hBadge').innerHTML = '<span class="dot"></span>停止';
+  }
+
+  $('#bStart').disabled = running || starting;
+  $('#bStop').disabled = !running && !starting;
+  $('#hExit').textContent = d.exitip || (stage === 'failed' ? '未生效' : '—');
+  $('#hExit').style.color = d.exitip ? 'var(--green)' : '';
 
   $('#hIf').textContent = d.iface || '未开热点';
   $('#hNet').textContent = d.net || '—';
@@ -656,17 +678,21 @@ $('#bStart').onclick = async () => {
   $('#bStart').innerHTML = '<span class="spin"></span> 启动中';
   toast('正在启动（约 5 秒）');
   run(`(setsid sh ${GW}/gateway.sh start ${scope === 'all' ? '--all' : ''} >/dev/null 2>&1 &); echo bg`);
-  let ok = false;
-  for (let i = 0; i < 15; i++) {
-    await new Promise(r => setTimeout(r, 700));
+  let done = false, failed = false, exip = '';
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 800));
     const raw = await run(`sh ${GW}/status.sh 2>/dev/null`);
     try {
       const d = JSON.parse(raw.trim().split('\n').pop());
-      if (d.running === 1) { ok = true; break; }
+      if (d.stage === 'ready' && d.running === 1) { done = true; exip = d.exitip || ''; break; }
+      if (d.stage === 'failed') { failed = true; break; }
     } catch (e) {}
+    refreshHome();
   }
   $('#bStart').innerHTML = '启动网关';
-  toast(ok ? '✅ 已启动' : '启动较慢，稍后自动刷新');
+  if (done) toast(exip ? ('✅ 代理已生效 · 出口 ' + exip) : '✅ 已启动');
+  else if (failed) toast('❌ 启动失败，已回滚');
+  else toast('启动较慢，稍后自动刷新');
   refreshHome();
 };
 
